@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/experiment-spawn.iml" filepath="$PROJECT_DIR$/experiment-spawn.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/experiment-spawn_main.iml" filepath="$PROJECT_DIR$/.idea/modules/experiment-spawn_main.iml" group="experiment-spawn" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/experiment-spawn_test.iml" filepath="$PROJECT_DIR$/.idea/modules/experiment-spawn_test.iml" group="experiment-spawn" />
+    </modules>
+  </component>
+</project>

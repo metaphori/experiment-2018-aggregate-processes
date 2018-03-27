@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaSbtSettings">
+    <option name="customVMPath" value="/Library/Java/JavaVirtualMachines/jdk1.7.0_79.jdk/Contents/Home" />
+    <option name="vmParameters" value="-XX:MaxPermSize=600M" />
+  </component>
+</project>

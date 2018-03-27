@@ -1,0 +1,35 @@
+apply plugin: 'java'
+apply plugin: 'scala'
+apply plugin: 'eclipse'
+
+repositories {
+	mavenCentral()
+    flatDir { dirs 'libs' }
+}
+
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+dependencies {
+    compile 'org.scala-lang:scala-library:2.12.2'
+    //compile name: 'scafi-lib-assembly-0.1.0'
+    compile name: 'alchemist-redist-7.0.2'
+}
+
+task myRun(type: JavaExec){
+    classpath 'src/main/java'
+    classpath 'src/main/yaml'
+    classpath 'src/main/scala'
+    classpath sourceSets.main.runtimeClasspath
+    main = 'it.unibo.alchemist.Alchemist'
+    args(
+        "-y", "src/main/yaml/xxx.yml",
+        "-g", "src/main/resources/effectsxxx.aes"
+    )
+    dependsOn(compileScala)
+    dependsOn(processResources)
+}
