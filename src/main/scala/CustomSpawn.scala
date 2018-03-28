@@ -33,22 +33,15 @@ trait CustomSpawn {
 
   case class ProcInstance[A, B, C](puid: PUID)
                                   (val params: A, val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
-  //                                (implicit val aggregateProgram: ExecutionTemplate)
   {
-    //import aggregateProgram._
-    def run(args: B) = ProcInstance(puid)(params, proc, align(puid) { _ => {
-      val v = Some(proc.apply(params)(args))
-      //env.put(s"Proc$puid", s"Dev $mid running $puid (params: $params) with args $args => res: $v")
-      v
-    } })
+    def run(args: B) = ProcInstance(puid)(params, proc, align(puid) { _ => Some(proc.apply(params)(args)) })
 
-    override def toString: String = {
+    override def toString: String =
       s"{$puid, params:($params), val:($value)}"
-    }
   }
 
   def spawn[A, B, C](process: Proc[A, B, C], params: List[A], args: B): Iterable[C] = {
-    val procs = rep((0, Map[PUID, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
+    rep((0, Map[PUID, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
       // 1. Take previous processes (from me and from my neighbours)
       val nbrProcs = excludingSelf.mergeHoodFirst(nbr(currProcs))
         .mapValues(pi => ProcInstance(pi.puid)(pi.params, process))
@@ -68,8 +61,7 @@ trait CustomSpawn {
       (k + params.length, allprocs
         .mapValuesStrict(p => p.run(args))
         .filterValues(_.value.get._2 != External))
-    } }
-    procs._2.collect { case (_, p) if p.value.get._2 == Output => p.value.get._1 }
+    } }._2.collect { case (_, p) if p.value.get._2 == Output => p.value.get._1 }
   }
 
   implicit class RichMap[K,V](val m: Map[K,V]){
