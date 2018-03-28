@@ -29,30 +29,23 @@ trait CustomSpawn {
 
   type Proc[A, B, C] = A => B => (C, Status)
 
-  sealed case class Scope[K](key: K) extends Slot
-
-  case class ProcInstance[A, B, C](puid: PUID)
-                                  (val params: A, val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
+  case class ProcInstance[A, B, C](params: A)(val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
   {
-    def run(args: B) = ProcInstance(puid)(params, proc, align(puid) { _ => Some(proc.apply(params)(args)) })
+    def run(args: B) =
+      ProcInstance(params)(proc, align(s"procInstance_${params.hashCode()}") { _ => Some(proc.apply(params)(args)) })
 
     override def toString: String =
-      s"{$puid, params:($params), val:($value)}"
+      s"{params:($params), val:($value)}"
   }
 
-  def spawn[A, B, C](process: Proc[A, B, C], params: List[A], args: B): Iterable[C] = {
-    rep((0, Map[PUID, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
+  def spawn[A, B, C](process: Proc[A, B, C], params: List[A], args: B): Map[A,C] = {
+    rep((0, Map[A, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
       // 1. Take previous processes (from me and from my neighbours)
-      val nbrProcs = excludingSelf.mergeHoodFirst(nbr(currProcs))
-        .mapValues(pi => ProcInstance(pi.puid)(pi.params, process))
+      val nbrProcs = excludingSelf.unionHoodSet(nbr(currProcs.keySet))
+        .map(pi => pi -> ProcInstance(pi)(process)).toMap
 
       // 2. New processes to be spawn, based on a generation condition
-      val newProcs = params.zipWithIndex.map { case (arg, i) => {
-        val id = PUID(s"${mid}_${k + i}")
-        val newProc = ProcInstance(id)(arg, process)
-        id -> newProc
-      }
-      }.toMap
+      val newProcs = params.map { case arg => arg -> ProcInstance(arg)(process) }.toMap
 
       val allprocs = (currProcs ++ nbrProcs ++ newProcs)
       env.put(s"Spawn result $k: ", allprocs)
@@ -61,7 +54,7 @@ trait CustomSpawn {
       (k + params.length, allprocs
         .mapValuesStrict(p => p.run(args))
         .filterValues(_.value.get._2 != External))
-    } }._2.collect { case (_, p) if p.value.get._2 == Output => p.value.get._1 }
+    } }._2.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
   }
 
   implicit class RichMap[K,V](val m: Map[K,V]){

@@ -156,7 +156,7 @@
       "val": 10
     },
     "molFilter": true,
-    "molString": "gradientWithTrust",
+    "molString": "MultiGradient",
     "molPropertyFilter": true,
     "property": "",
     "writingPropertyValue": false,
@@ -400,7 +400,7 @@
       "val": 15
     },
     "molFilter": true,
-    "molString": "distrusted",
+    "molString": "T_Impulse",
     "molPropertyFilter": true,
     "property": "",
     "writingPropertyValue": false,

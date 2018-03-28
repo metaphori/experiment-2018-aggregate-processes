@@ -25,6 +25,9 @@ import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 trait ScafiAlchemistSupport { self: AggregateProgram with StandardSensors =>
   def env = sense[NodeManager]("manager")
   def currTime: Double = sense[Time]("time").toDouble()
-  def dt(): Double = sense[Time]("dt").toDouble()
+  def dt(whenNan: Double = Double.NaN): Double = {
+    val dt = sense[Time]("dt").toDouble()
+    if(dt.isNaN) whenNan else dt
+  }
   def nextRandom: Double = sense[()=>java.lang.Double]("random")().toDouble
 }
