@@ -4,19 +4,15 @@ class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
 
-  val centres = Set(189)
+  val centre = 189
   val targets = Vector(200,77)
   val source = 0
 
-
   val startEvery = 20 // A generation impulse every 20 time units
-
-  def isGenerator = centres.contains(mid)
 
   def delta: Int = dt(whenNan = 0).toInt
 
-
-  def chat(centres: Set[ID], newTargets: Set[ID]) = {
+  def chat(centre: ID, newTargets: Set[ID]) = {
     type InitParams = (ID, ID, String)  // source, target, msg
     type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
     type Result = String
@@ -51,7 +47,7 @@ class Chat extends AggregateProgram
       }
     } }
 
-    val (distToCentre, parentToCentre) = distanceToWithParent(centres.contains(mid))
+    val (distToCentre, parentToCentre) = distanceToWithParent(centre == mid)
     val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
       excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set[ID]() }) + mid
     } // set of nodes whose path towards gen passes through me
@@ -84,9 +80,9 @@ class Chat extends AggregateProgram
     env.put("target", targets.contains(mid))
     env.put("newtargets", chg)
     env.put("source", source==mid)
-    env.put("centre", centres.contains(mid))
+    env.put("centre", centre==mid)
 
-    chat(centres, if(chg) newTargets else Set[ID]())
+    chat(centre, if(chg) newTargets else Set[ID]())
   }
 
   /*****************************
