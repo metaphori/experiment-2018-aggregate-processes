@@ -91,7 +91,13 @@ class Chat extends AggregateProgram
 
   def distanceToWithParent(source: Boolean): (Double, ID) = {
     rep((Double.PositiveInfinity, mid)){ case (dist, parent) =>
-      excludingSelf.minHoodSelector(nbr{dist})(nbr{(dist,mid)}).getOrElse((Double.PositiveInfinity,mid))
+      mux(source){
+        (0.0, mid)
+      }{
+        excludingSelf.minHoodSelector(nbr{dist}+nbrRange()){
+          (nbr{dist}+nbrRange(),nbr{mid})
+        }.getOrElse((Double.PositiveInfinity, mid))
+      }
     }
   }
 
