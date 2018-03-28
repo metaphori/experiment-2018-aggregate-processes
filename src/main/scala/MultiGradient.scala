@@ -32,7 +32,7 @@ class MultiGradient extends AggregateProgram
         }{ External }
         (distanceTo(source), status)
       },
-      params = mux(isGenerator & impulse){ List(sharedTimer.toInt) }{ List() },
+      params = mux(isGenerator & impulse){ Set(sharedTimer.toInt) }{ Set() },
       args = src)
 
     env.put("T_dt", delta)

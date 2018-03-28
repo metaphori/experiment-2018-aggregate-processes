@@ -51,7 +51,7 @@ class Chat extends AggregateProgram
 
     val targets_found: Map[InitParams, Result] =
       spawn[InitParams,RuntimeParams,Result](chatComputation,
-        newTargets.map(t => (source, t, s"Msg from $mid to $t")).toList,
+        newTargets.map(t => (source, t, s"Msg from $mid to $t")),
         Set())
     targets_found
   }

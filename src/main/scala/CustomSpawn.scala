@@ -38,7 +38,7 @@ trait CustomSpawn {
       s"{params:($params), val:($value)}"
   }
 
-  def spawn[A, B, C](process: Proc[A, B, C], params: List[A], args: B): Map[A,C] = {
+  def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
     rep((0, Map[A, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
       // 1. Take previous processes (from me and from my neighbours)
       val nbrProcs = excludingSelf.unionHoodSet(nbr(currProcs.keySet))
@@ -51,7 +51,7 @@ trait CustomSpawn {
       env.put(s"Spawn result $k: ", allprocs)
 
       // 3. Collect all process instances to be executed, execute them and update their state
-      (k + params.length, allprocs
+      (k + params.size, allprocs
         .mapValuesStrict(p => p.run(args))
         .filterValues(_.value.get._2 != External))
     } }._2.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
