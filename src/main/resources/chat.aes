@@ -278,7 +278,7 @@
       "val": 13
     },
     "molFilter": true,
-    "molString": "generator",
+    "molString": "centre",
     "molPropertyFilter": true,
     "property": "",
     "writingPropertyValue": false,
@@ -475,7 +475,7 @@
     "minprop": {
       "max": 10,
       "min": -10,
-      "val": 0
+      "val": 1
     },
     "maxprop": {
       "max": 10,
@@ -606,6 +606,67 @@
     },
     "colorCache": {
       "value": -16711936,
+      "falpha": 0.0
+    }
+  },
+  {
+    "type": "class it.unibo.alchemist.boundary.gui.effects.DrawShape",
+    "curIncarnation": "scafi",
+    "mode": "DrawRectangle",
+    "red": {
+      "max": 255,
+      "min": 0,
+      "val": 0
+    },
+    "blue": {
+      "max": 255,
+      "min": 0,
+      "val": 0
+    },
+    "green": {
+      "max": 255,
+      "min": 0,
+      "val": 0
+    },
+    "alpha": {
+      "max": 255,
+      "min": 0,
+      "val": 255
+    },
+    "scaleFactor": {
+      "max": 100,
+      "min": 0,
+      "val": 50
+    },
+    "size": {
+      "max": 100,
+      "min": 0,
+      "val": 13
+    },
+    "molFilter": true,
+    "molString": "finish",
+    "molPropertyFilter": true,
+    "property": "",
+    "writingPropertyValue": false,
+    "c": "Alpha",
+    "reverse": false,
+    "propoom": {
+      "max": 10,
+      "min": -10,
+      "val": 0
+    },
+    "minprop": {
+      "max": 10,
+      "min": -10,
+      "val": 1
+    },
+    "maxprop": {
+      "max": 10,
+      "min": -10,
+      "val": 1
+    },
+    "colorCache": {
+      "value": -16777216,
       "falpha": 0.0
     }
   }

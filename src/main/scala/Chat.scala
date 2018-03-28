@@ -4,15 +4,19 @@ class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
 
-  val generators = Set(189,285,294,125,114)
+  val centres = Set(189)
+  val targets = Vector(200,77)
+  val source = 0
+
+
   val startEvery = 20 // A generation impulse every 20 time units
 
-  def isGenerator = generators.contains(mid)
+  def isGenerator = centres.contains(mid)
 
   def delta: Int = dt(whenNan = 0).toInt
 
 
-  def chat(generators: Set[ID], newTargets: Set[ID]) = {
+  def chat(centres: Set[ID], newTargets: Set[ID]) = {
     type InitParams = (ID, ID, String)  // source, target, msg
     type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
     type Result = String
@@ -27,8 +31,11 @@ class Chat extends AggregateProgram
         val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to gen?
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
-        //val finished = gossipEver(old_targets.contains(src)) // if target gets removed, computation is over
-        val status: Status = if (inRegion) {
+        val finished = rep((false,false)){ case (startFinish, done) =>
+          if(startFinish) env.put("finish", 1) else env.put("finish", 0)
+          (mid==target | startFinish | excludingSelf.anyHood(nbr(startFinish)), includingSelf.everyHood(nbr(startFinish)))
+        }._2
+        val status: Status = if (inRegion && !finished) {
           if (mid == target) {
             env.put("bubble", 2)
             Output
@@ -44,7 +51,7 @@ class Chat extends AggregateProgram
       }
     } }
 
-    val (distToCentre, parentToCentre) = distanceToWithParent(generators.contains(mid))
+    val (distToCentre, parentToCentre) = distanceToWithParent(centres.contains(mid))
     val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
       excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set[ID]() }) + mid
     } // set of nodes whose path towards gen passes through me
@@ -56,25 +63,30 @@ class Chat extends AggregateProgram
     targets_found
   }
 
+  implicit class RichFieldOps(fo: FieldOps) {
+    def everyHood(p: => Boolean): Boolean = {
+      fo.foldhoodTemplate(true)(_&&_)(nbr{p})
+    }
+  }
+
   /*****************************
   ** MAIN PROGRAM ENTRY POINT **
   ******************************/
 
-  val source = 0
   override def main() = {
     val newTargets: Set[ID] = branch(mid==source){
       val t = timer(200)
-      if(t > 150 && t < 180) Set(200)
-      else Set(77)
+      if(t > 150 && t < 180) Set(targets(0))
+      else Set(targets(1))
     }{ Set() }
     val chg = captureChange(newTargets)
 
-    env.put("target", Set(200,77).contains(mid))
+    env.put("target", targets.contains(mid))
     env.put("newtargets", chg)
     env.put("source", source==mid)
-    env.put("generator", generators.contains(mid))
+    env.put("centre", centres.contains(mid))
 
-    chat(generators, if(chg) newTargets else Set[ID]())
+    chat(centres, if(chg) newTargets else Set[ID]())
   }
 
   /*****************************
