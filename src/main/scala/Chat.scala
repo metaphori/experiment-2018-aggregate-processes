@@ -13,25 +13,20 @@ class Chat extends AggregateProgram
 
 
   def chat(generators: Set[ID], newTargets: Set[ID]) = {
-    val (distToGen, parentInPathToGen) = distanceToWithParent(generators.contains(mid))
-    val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
-      excludingSelf.unionHoodSet[ID](mux( nbr{parentInPathToGen}==mid ){ nbr(s) }{ Set[ID]() }) + mid
-    } // set of nodes whose path towards gen passes through me
-
     type InitParams = (ID, ID, String)  // source, target, msg
-    type RuntimeParams = Unit             // nothing
+    type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
     type Result = String
 
     val chatComputation: Proc[InitParams, RuntimeParams, Result] = {
-      case (src: ID, target: ID, msg: String) => { case () => {
+      case (src: ID, target: ID, msg: String) => { case (distToCentre, parentToCentre, dependentNodes) => {
         val distToSource = distanceTo(src == mid)
         val (distToTarget, parentInPathToTarget) = distanceToWithParent(target == mid) // distance and direction to target
-        val inPathFromSrcToGen = includingSelf.anyHood {
-          nbr(parentInPathToGen) == mid
+        val inPathFromSrcToCentre = includingSelf.anyHood {
+          nbr(parentToCentre) == mid
         } // am I in path from src to gen?
-        val inPathFromTargetToGen = dependentNodes.contains(target) // am I in path from target to gen?
+        val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to gen?
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
-        val inRegion = inPathFromSrcToGen || inPathFromTargetToGen // || middle
+        val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
         //val finished = gossipEver(old_targets.contains(src)) // if target gets removed, computation is over
         val status: Status = if (inRegion) {
           if (mid == target) {
@@ -49,10 +44,15 @@ class Chat extends AggregateProgram
       }
     } }
 
+    val (distToCentre, parentToCentre) = distanceToWithParent(generators.contains(mid))
+    val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
+      excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set[ID]() }) + mid
+    } // set of nodes whose path towards gen passes through me
+
     val targets_found: Map[InitParams, Result] =
       spawn[InitParams,RuntimeParams,Result](chatComputation,
         newTargets.map(t => (source, t, s"Msg from $mid to $t")),
-        Set())
+        (distToCentre, parentToCentre, dependentNodes))
     targets_found
   }
 

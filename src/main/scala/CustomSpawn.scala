@@ -40,7 +40,7 @@ trait CustomSpawn {
 
   def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
     rep((0, Map[A, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
-      // 1. Take previous processes (from me and from my neighbours)
+      // 1. Take active process instances from my neighbours
       val nbrProcs = excludingSelf.unionHoodSet(nbr(currProcs.keySet))
         .map(pi => pi -> ProcInstance(pi)(process)).toMap
 
