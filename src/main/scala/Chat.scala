@@ -6,7 +6,7 @@ class Chat extends AggregateProgram
 
   val centre = 189
   val targets = Vector(200,77)
-  val source = 0
+  val source = 22
 
   val startEvery = 20 // A generation impulse every 20 time units
 
@@ -43,14 +43,27 @@ class Chat extends AggregateProgram
           env.put("bubble", 0)
           External
         }
+
+        env.put("dist_to_source", distToSource)
+        env.put("dist_to_target", distToTarget)
+        env.put("in_region", inRegion)
+        env.put("in_path_from_source_to_center", inPathFromSrcToCentre)
+        env.put("in_path_from_target_to_center", inPathFromTargetToCentre)
+        env.put(s"proc_${src}_${target}", s"Msg '$msg'. Status: $status")
+
         (msg, status)
       }
     } }
 
     val (distToCentre, parentToCentre) = distanceToWithParent(centre == mid)
+
     val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
       excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set[ID]() }) + mid
     } // set of nodes whose path towards gen passes through me
+
+    env.put("gradient", distToCentre)
+    env.put("parent_to_centre", parentToCentre)
+    env.put("dependend_nodes", dependentNodes)
 
     val targets_found: Map[InitParams, Result] =
       spawn[InitParams,RuntimeParams,Result](chatComputation,
@@ -72,7 +85,7 @@ class Chat extends AggregateProgram
   override def main() = {
     val newTargets: Set[ID] = branch(mid==source){
       val t = timer(200)
-      if(t > 150 && t < 180) Set(targets(0))
+      if(t > 140 && t < 180) Set(targets(0))
       else Set(targets(1))
     }{ Set() }
     val chg = captureChange(newTargets)

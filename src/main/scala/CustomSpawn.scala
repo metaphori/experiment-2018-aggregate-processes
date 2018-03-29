@@ -36,6 +36,8 @@ trait CustomSpawn {
 
     override def toString: String =
       s"{params:($params), val:($value)}"
+
+    val puid: String = s"procInstance_${params.hashCode()}"
   }
 
   def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
