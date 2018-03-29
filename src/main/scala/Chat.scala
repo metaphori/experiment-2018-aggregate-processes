@@ -21,15 +21,16 @@ class Chat extends AggregateProgram
       case (src: ID, target: ID, msg: String) => { case (distToCentre, parentToCentre, dependentNodes) => {
         val distToSource = distanceTo(src == mid)
         val (distToTarget, parentInPathToTarget) = distanceToWithParent(target == mid) // distance and direction to target
-        val inPathFromSrcToCentre = includingSelf.anyHood {
+
+        val inPathFromSrcToCentre = src==mid | includingSelf.anyHood {
           nbr(parentToCentre) == mid
-        } // am I in path from src to gen?
-        val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to gen?
+        } // am I in path from src to centre?
+        val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to centre?
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
-        val finished = rep((false,false)){ case (startFinish, done) =>
+        val finished = rep((mid==target,false)){ case (startFinish, done) =>
           if(startFinish) env.put("finish", 1) else env.put("finish", 0)
-          (mid==target | startFinish | excludingSelf.anyHood(nbr(startFinish)), includingSelf.everyHood(nbr(startFinish)))
+          (startFinish | excludingSelf.anyHood(nbr(startFinish)), includingSelf.everyHood(nbr(startFinish)))
         }._2
         val status: Status = if (inRegion && !finished) {
           if (mid == target) {

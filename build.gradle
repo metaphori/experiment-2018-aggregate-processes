@@ -16,7 +16,7 @@ eclipse {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.2'
-    //compile name: 'scafi-lib-assembly-0.1.0'
+    compile name: 'scafi-lib-assembly-0.3.0'
     compile name: 'alchemist-redist-7.0.2'
 }
 

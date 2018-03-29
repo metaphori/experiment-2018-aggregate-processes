@@ -32,7 +32,11 @@ trait CustomSpawn {
   case class ProcInstance[A, B, C](params: A)(val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
   {
     def run(args: B) =
-      ProcInstance(params)(proc, align(s"procInstance_${params.hashCode()}") { _ => Some(proc.apply(params)(args)) })
+      ProcInstance(params)(proc, {
+        val res: Option[(C,Status)] = vm.delayExports("proc"){ align(puid) { _ => Some(proc.apply(params)(args)) } }
+        if(res.get._2 != External) vm.completeDelayedExports("proc")(true)
+        res
+      })
 
     override def toString: String =
       s"{params:($params), val:($value)}"
