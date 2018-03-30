@@ -32,11 +32,7 @@ trait CustomSpawn {
   case class ProcInstance[A, B, C](params: A)(val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
   {
     def run(args: B) =
-      ProcInstance(params)(proc, {
-        val res: Option[(C,Status)] = vm.delayExports("proc"){ align(puid) { _ => Some(proc.apply(params)(args)) } }
-        if(res.get._2 != External) vm.completeDelayedExports("proc")(true)
-        res
-      })
+      ProcInstance(params)(proc, { align(puid) { _ => Some(proc.apply(params)(args)) } })
 
     override def toString: String =
       s"{params:($params), val:($value)}"
@@ -58,7 +54,12 @@ trait CustomSpawn {
 
       // 3. Collect all process instances to be executed, execute them and update their state
       (k + params.size, allprocs
-        .mapValuesStrict(p => p.run(args))
+        .mapValuesStrict(p => {
+          vm.newExportStack
+          val result = p.run(args)
+          if(result.value.get._2 == External) vm.discardExport else vm.mergeExport
+          result
+        })
         .filterValues(_.value.get._2 != External))
     } }._2.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
   }
