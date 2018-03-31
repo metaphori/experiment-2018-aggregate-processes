@@ -28,11 +28,21 @@ class Chat extends AggregateProgram
         val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to centre?
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
-        val finished = rep((mid==target,false)){ case (startFinish, done) =>
-          if(startFinish) env.put("finish", 1) else env.put("finish", 0)
-          (startFinish | excludingSelf.anyHood(nbr(startFinish)), includingSelf.everyHood(nbr(startFinish)))
-        }._2
-        val status: Status = if (inRegion && !finished) {
+
+        /*
+        val j = 5
+        val finishProc: Proc[Unit,Unit,Boolean] = { case _ => _ =>
+          val k = rep(0)(_+1)
+          (if(k <= j) false else true, if(k >= j*2) External else Output)
+        }
+        val finished = spawn[Unit,Unit,Boolean](finishProc, if(mid==target) Set(()) else Set(), ()).headOption.map(_._2).getOrElse(false)
+        */
+
+        val finished = gossipEver(mid == target)
+        val terminate = includingSelf.everyHood(nbr{finished})
+        env.put("x_finished_terminate", (finished,terminate))
+
+        val status: Status = if (inRegion && !terminate) {
           if (mid == target) {
             env.put("bubble", 2)
             Output
@@ -102,6 +112,9 @@ class Chat extends AggregateProgram
   /*****************************
    ** Functions **
    ******************************/
+
+  def gossipEver(x: Boolean) =
+    rep(x){ old => x | includingSelf.anyHood(nbr{old}) }
 
   def distanceToWithParent(source: Boolean): (Double, ID) = {
     rep((Double.PositiveInfinity, mid)){ case (dist, parent) =>
