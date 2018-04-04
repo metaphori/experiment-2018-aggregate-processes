@@ -41,27 +41,24 @@ trait CustomSpawn {
   }
 
   def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
-    rep((0, Map[A, ProcInstance[A, B, C]]())) { case (k, currProcs) => {
+    rep(Map[A, ProcInstance[A, B, C]]()) { case currProcs => {
       // 1. Take active process instances from my neighbours
       val nbrProcs = excludingSelf.unionHoodSet(nbr(currProcs.keySet))
-        .map(pi => pi -> ProcInstance(pi)(process)).toMap
+        .map(pi => pi -> ProcInstance(pi)(process)).toMap // TODO: should assume serialization of object
 
       // 2. New processes to be spawn, based on a generation condition
       val newProcs = params.map { case arg => arg -> ProcInstance(arg)(process) }.toMap
 
-      val allprocs = (currProcs ++ nbrProcs ++ newProcs)
-      env.put(s"Spawn result $k: ", allprocs)
-
       // 3. Collect all process instances to be executed, execute them and update their state
-      (k + params.size, allprocs
+      (currProcs ++ nbrProcs ++ newProcs)
         .mapValuesStrict(p => {
           vm.newExportStack
           val result = p.run(args)
           if(result.value.get._2 == External) vm.discardExport else vm.mergeExport
           result
         })
-        .filterValues(_.value.get._2 != External))
-    } }._2.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
+        .filterValues(_.value.get._2 != External)
+    } }.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
   }
 
   implicit class RichMap[K,V](val m: Map[K,V]){
