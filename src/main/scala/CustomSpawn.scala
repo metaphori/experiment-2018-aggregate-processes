@@ -68,20 +68,4 @@ trait CustomSpawn {
     def mapValuesStrict[U](mapLogic: V => U): Map[K,U] =
       m.map { case (k,v) => k -> mapLogic(v) }
   }
-
-  /**
-    * Process (kind) identifier
-    * @param pid
-    */
-  case class PID(pid: String){
-    override def toString: String = s"pid$pid"
-  }
-
-  /**
-    * Process instance identifier
-    * @param puid
-    */
-  case class PUID(puid: String){
-    override def toString: String = s"puid$puid"
-  }
 }
