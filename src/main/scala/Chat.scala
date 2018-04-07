@@ -17,7 +17,7 @@ class Chat extends AggregateProgram
     type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
     type Result = String
 
-    val chatComputation: Proc[InitParams, RuntimeParams, Result] = {
+    val chatComputation: InitParams => RuntimeParams => (Result, Status) = {
       case (src: ID, target: ID, msg: String) => { case (distToCentre, parentToCentre, dependentNodes) => {
         val distToSource = distanceTo(src == mid)
         val (distToTarget, parentInPathToTarget) = distanceToWithParent(target == mid) // distance and direction to target
@@ -74,11 +74,11 @@ class Chat extends AggregateProgram
     targets_found
   }
 
-  implicit class RichFieldOps(fo: FieldOps) {
-    def everyHood(p: => Boolean): Boolean = {
-      fo.foldhoodTemplate(true)(_&&_)(nbr{p})
-    }
-  }
+//  implicit class RichFieldOps(fo: FieldOps) {
+//    def everyHood(p: => Boolean): Boolean = {
+//      fo.foldhoodTemplate(true)(_&&_)(nbr{p})
+//    }
+//  }
 
   /*****************************
   ** MAIN PROGRAM ENTRY POINT **

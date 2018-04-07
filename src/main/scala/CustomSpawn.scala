@@ -23,13 +23,12 @@ trait CustomSpawn {
 
   trait Status
 
-  case object External extends Status // External to the bubble
-  case object Bubble extends Status // Within the bubble
-  case object Output extends Status // Within the bubble and bubble output producer
+  case object External extends Status   // External to the bubble
+  case object Bubble extends Status     // Within the bubble
+  case object Output extends Status     // Within the bubble and bubble output producer
+  case object Terminated extends Status // Notifies the willingness to terminate the bubble
 
-  type Proc[A, B, C] = A => B => (C, Status)
-
-  case class ProcInstance[A, B, C](params: A)(val proc: Proc[A, B, C], val value: Option[(C, Status)] = None)
+  case class ProcInstance[A, B, C](params: A)(val proc: A => B => C, val value: Option[C] = None)
   {
     def run(args: B) =
       ProcInstance(params)(proc, { align(puid) { _ => Some(proc.apply(params)(args)) } })
@@ -59,8 +58,8 @@ trait CustomSpawn {
     }
   }
 
-  def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
-    share(Map[A, ProcInstance[A, B, C]]()) { case (currProcs, nbrProcesses) => {
+  def simpleSpawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
+    share(Map[A, ProcInstance[A, B, (C,Boolean)]]()) { case (currProcs, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
       val repp = vm.asInstanceOf[RoundVMImpl].status.path
       val nbrProcs = excludingSelf.unionHoodSet(nbrProcesses().keySet)
@@ -74,11 +73,34 @@ trait CustomSpawn {
         .mapValuesStrict(p => {
           vm.newExportStack
           val result = p.run(args)
-          if(result.value.get._2 == External) vm.discardExport else vm.mergeExport
+          if(result.value.get._2) vm.mergeExport else vm.discardExport
           result
         })
-        .filterValues(_.value.get._2 != External)
-    } }.collect { case (k, p) if p.value.get._2 == Output => k -> p.value.get._1 }
+        .filterValues(_.value.get._2)
+    } }.mapValuesStrict(_.value.get._1)
+  }
+
+  def spawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
+    simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
+      val (_, _, result, status) = rep((false, false, none[C], false)) { case (f, _, _, _) => {
+        val (result, status) = process(p)(a)
+        val terminated = includingSelf.everyHood(nbr{f})
+        val (newResult, newStatus) = (result, status) match {
+          case _ if terminated   => (None, false)
+          case (value, Output)   => (Some(value), true)
+          case (_,     Bubble)   => (None, true)
+          case (_,     External) => (None, false)
+        }
+        (status == Terminated | includingSelf.anyHood(nbr{f}), terminated, newResult, newStatus)
+      } }
+      (result, status)
+    }, params, args).collect { case (k, Some(p)) => k -> p }
+  }
+
+  implicit class RichFieldOps(fo: FieldOps) {
+    def everyHood(p: => Boolean): Boolean = {
+      fo.foldhoodTemplate(true)(_&&_)(nbr{p})
+    }
   }
 
   implicit class RichMap[K,V](val m: Map[K,V]){
@@ -88,4 +110,6 @@ trait CustomSpawn {
     def mapValuesStrict[U](mapLogic: V => U): Map[K,U] =
       m.map { case (k,v) => k -> mapLogic(v) }
   }
+
+  private def none[T]: Option[T] = None
 }
