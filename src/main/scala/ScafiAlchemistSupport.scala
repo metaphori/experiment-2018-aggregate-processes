@@ -1,5 +1,6 @@
 import it.unibo.alchemist.implementation.nodes.NodeManager
 import it.unibo.alchemist.model.interfaces.Time
+import it.unibo.scafi.PlatformDependentConstants
 
 /*
  * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.
@@ -30,4 +31,10 @@ trait ScafiAlchemistSupport { self: AggregateProgram with StandardSensors =>
     if(dt.isNaN) whenNan else dt
   }
   def nextRandom: Double = sense[()=>java.lang.Double]("random")().toDouble
+
+  import sun.reflect.Reflection.getCallerClass
+  override def aggregate[T](f: => T): T =
+    vm.nest(FunCall[T](vm.index, getCallerClass(PlatformDependentConstants.StackTracePosition).getName()))(true) {
+      f
+    }
 }
