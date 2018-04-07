@@ -29,15 +29,6 @@ class Chat extends AggregateProgram
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
 
-        /*
-        val j = 5
-        val finishProc: Proc[Unit,Unit,Boolean] = { case _ => _ =>
-          val k = rep(0)(_+1)
-          (if(k <= j) false else true, if(k >= j*2) External else Output)
-        }
-        val finished = spawn[Unit,Unit,Boolean](finishProc, if(mid==target) Set(()) else Set(), ()).headOption.map(_._2).getOrElse(false)
-        */
-
         val finished = gossipEver(mid == target)
         val terminate = includingSelf.everyHood(nbr{finished})
         env.put("x_finished_terminate", (finished,terminate))

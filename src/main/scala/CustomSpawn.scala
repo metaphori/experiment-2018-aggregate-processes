@@ -40,10 +40,30 @@ trait CustomSpawn {
     val puid: String = s"procInstance_${params.hashCode()}"
   }
 
+  def nbrpath[A](path: Path)(expr: => A): A = {
+    val tvm = vm.asInstanceOf[RoundVMImpl]
+    vm.nest(Nbr[A](vm.index))(vm.neighbour.map(_ == vm.self).getOrElse(false)) {
+      vm.neighbour match {
+        case Some(nbr) if (nbr != vm.self) => tvm.context
+          .readSlot[A](vm.neighbour.get, path)
+          .getOrElse(throw new OutOfDomainException(tvm.context.selfId, vm.neighbour.get, path))
+        case _ => expr
+      }
+    }
+  }
+
+  def share[A](init: => A)(f: (A, () => A) => A): A = {
+    rep(init){ oldRep =>
+      val repp = vm.asInstanceOf[RoundVMImpl].status.path
+      f(oldRep, () => nbrpath(repp)(oldRep))
+    }
+  }
+
   def spawn[A, B, C](process: Proc[A, B, C], params: Set[A], args: B): Map[A,C] = {
-    rep(Map[A, ProcInstance[A, B, C]]()) { case currProcs => {
+    share(Map[A, ProcInstance[A, B, C]]()) { case (currProcs, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
-      val nbrProcs = excludingSelf.unionHoodSet(nbr(currProcs.keySet))
+      val repp = vm.asInstanceOf[RoundVMImpl].status.path
+      val nbrProcs = excludingSelf.unionHoodSet(nbrProcesses().keySet)
         .map(pi => pi -> ProcInstance(pi)(process)).toMap // TODO: should assume serialization of object
 
       // 2. New processes to be spawn, based on a generation condition
