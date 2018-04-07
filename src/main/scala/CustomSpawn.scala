@@ -62,26 +62,25 @@ trait CustomSpawn {
     share(Map[A, C]()) { case (_, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
       val nbrProcs = includingSelf.unionHoodSet(nbrProcesses().keySet)
-        .map(pi => pi -> ProcInstance(pi)(process)).toMap // TODO: should assume serialization of object
 
       // 2. New processes to be spawn, based on a generation condition
-      val newProcs = params.map { case arg => arg -> ProcInstance(arg)(process) }.toMap
+      val newProcs = params
 
       // 3. Collect all process instances to be executed, execute them and update their state
       (nbrProcs ++ newProcs)
-        .mapValuesStrict(p => {
+        .map { case arg =>
+          val p = ProcInstance(arg)(process)
           vm.newExportStack
           val result = p.run(args)
           if(result.value.get._2) vm.mergeExport else vm.discardExport
-          result
-        })
-        .collect { case(p,pi) if pi.value.get._2 => p -> pi.value.get._1 }
+          arg -> result
+        }.collect { case(p,pi) if pi.value.get._2 => p -> pi.value.get._1 }.toMap
     } }
   }
 
   def spawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
     simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
-      val (_, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
+      val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
         val terminated = includingSelf.everyHood(nbr{finished})
         val (newResult, newStatus) = (result, status) match {

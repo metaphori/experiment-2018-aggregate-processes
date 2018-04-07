@@ -29,19 +29,19 @@ class Chat extends AggregateProgram
         //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
 
-        val status: Status = if(mid == target) {
-          if(rep(0)(_+1)==1) {
+        val status: Status = branch(mid == target) {
+          mux[Status](rep(0)(_+1)==1) {
             env.put("bubble",2); Output
-          } else {
-            env.put("bubble",0); Terminated
+          } {
+            env.put("bubble",3); Terminated
           }
-        } else if (inRegion) {
+        } { if (inRegion) {
           env.put("bubble", 1)
           Bubble
         } else {
           env.put("bubble", 0)
           External
-        }
+        } }
 
         env.put("dist_to_source", distToSource)
         env.put("dist_to_target", distToTarget)
