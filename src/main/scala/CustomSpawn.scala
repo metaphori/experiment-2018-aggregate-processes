@@ -59,39 +59,39 @@ trait CustomSpawn {
   }
 
   def simpleSpawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
-    share(Map[A, ProcInstance[A, B, (C,Boolean)]]()) { case (currProcs, nbrProcesses) => {
+    share(Map[A, C]()) { case (_, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
-      val repp = vm.asInstanceOf[RoundVMImpl].status.path
-      val nbrProcs = excludingSelf.unionHoodSet(nbrProcesses().keySet)
+      val nbrProcs = includingSelf.unionHoodSet(nbrProcesses().keySet)
         .map(pi => pi -> ProcInstance(pi)(process)).toMap // TODO: should assume serialization of object
 
       // 2. New processes to be spawn, based on a generation condition
       val newProcs = params.map { case arg => arg -> ProcInstance(arg)(process) }.toMap
 
       // 3. Collect all process instances to be executed, execute them and update their state
-      (currProcs ++ nbrProcs ++ newProcs)
+      (nbrProcs ++ newProcs)
         .mapValuesStrict(p => {
           vm.newExportStack
           val result = p.run(args)
           if(result.value.get._2) vm.mergeExport else vm.discardExport
           result
         })
-        .filterValues(_.value.get._2)
-    } }.mapValuesStrict(_.value.get._1)
+        .collect { case(p,pi) if pi.value.get._2 => p -> pi.value.get._1 }
+    } }
   }
 
   def spawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
     simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
-      val (_, _, result, status) = rep((false, false, none[C], false)) { case (f, _, _, _) => {
+      val (_, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
-        val terminated = includingSelf.everyHood(nbr{f})
+        val terminated = includingSelf.everyHood(nbr{finished})
         val (newResult, newStatus) = (result, status) match {
-          case _ if terminated   => (None, false)
-          case (value, Output)   => (Some(value), true)
-          case (_,     Bubble)   => (None, true)
-          case (_,     External) => (None, false)
+          case _ if terminated     => (None, false)
+          case (_,     External)   => (None, false)
+          case (_,     Terminated) => (None, true)
+          case (value, Output)     => (Some(value), true)
+          case (_,     Bubble)     => (None, true)
         }
-        (status == Terminated | includingSelf.anyHood(nbr{f}), terminated, newResult, newStatus)
+        (status == Terminated | includingSelf.anyHood(nbr{finished}), newResult, newStatus)
       } }
       (result, status)
     }, params, args).collect { case (k, Some(p)) => k -> p }
