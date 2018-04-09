@@ -1,6 +1,9 @@
+package chat.exp
+
 import it.unibo.alchemist.implementation.nodes.NodeManager
 import it.unibo.alchemist.model.interfaces.Time
 import it.unibo.scafi.PlatformDependentConstants
+import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
 /*
  * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.
@@ -19,9 +22,6 @@ import it.unibo.scafi.PlatformDependentConstants
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-
-import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
-
 
 trait ScafiAlchemistSupport { self: AggregateProgram with StandardSensors =>
   def env = sense[NodeManager]("manager")

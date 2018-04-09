@@ -1,3 +1,5 @@
+package chat.exp
+
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
 class Chat extends AggregateProgram
@@ -37,6 +39,7 @@ class Chat extends AggregateProgram
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
 
         val status: Status = branch(mid == target) {
+          env.put("target", true)
           mux[Status](rep(0)(_+1)==1) {
             if(!receivedMsgs.contains(msg)) {
               receivedMsgs += msg
@@ -79,6 +82,10 @@ class Chat extends AggregateProgram
   override def main() = {
     var newTargets = Set[ID]()
     val source: ID = if(nextRandom<SIM_PARAM_PROB_SEND) mid else -1
+
+    env.put("target", false)
+    env.put("source", source==mid)
+
     if(source==mid) {
       env.put(SIM_METRIC_N_MSGS_SENT, env.get[Double](SIM_METRIC_N_MSGS_SENT)+1)
       newTargets += Math.round(nextRandom * SIM_PARAM_N_DEVICES).toInt
