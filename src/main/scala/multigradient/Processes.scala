@@ -1,3 +1,5 @@
+package multigradient
+
 /*
  * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.
  * See the LICENCE.txt file distributed with this work for additional
@@ -16,11 +18,8 @@
  * limitations under the License.
 */
 
-import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
-
 trait Processes {
-  self: FieldCalculusSyntax with StandardSensors with FieldUtils =>
-  import excludingSelf._ // Here, fold operations by default only look at neighbours (i.e., not myself)
+  self: FieldCalculusSyntax with StandardSensors with FieldUtils => // Here, fold operations by default only look at neighbours (i.e., not myself)
 
   val TimeGC: Long = 20
 

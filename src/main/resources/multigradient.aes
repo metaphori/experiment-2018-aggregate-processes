@@ -156,7 +156,7 @@
       "val": 10
     },
     "molFilter": true,
-    "molString": "MultiGradient",
+    "molString": "multigradient.MultiGradient",
     "molPropertyFilter": true,
     "property": "",
     "writingPropertyValue": false,

@@ -1,6 +1,6 @@
-import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+package multigradient
 
-import scala.concurrent.duration.FiniteDuration
+import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
 class MultiGradient extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
