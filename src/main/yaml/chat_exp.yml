@@ -1,7 +1,7 @@
 variables:
   random: &random
     min: 0
-    max: 1
+    max: 3
     step: 1
     default: 0
   commRadius: &commRadius
@@ -17,6 +17,8 @@ variables:
     formula: "$nrows * $ncols"
   prob_send: &prob_send
     formula: "1.0/$ndevices"
+  stop_send_time: &stop_send_time
+    formula: 250
               
 export:
   - time
@@ -70,6 +72,8 @@ pools:
       concentration: 0.0
     - molecule: prob_send
       concentration: *prob_send
+    - molecule: stop_send_time
+      concentration: *stop_send_time
 #  - pool: &turnIntoSource
 #    - time-distribution:
 #        type: Trigger

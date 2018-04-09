@@ -16,6 +16,7 @@ class Chat extends AggregateProgram
 
   lazy val SIM_PARAM_PROB_SEND = sense[Double]("prob_send")
   lazy val SIM_PARAM_N_DEVICES = sense[Int]("ndevices")
+  lazy val SIM_PARAM_STOP_TIME = sense[Int]("stop_send_time")
 
   case class Msg(str: String, sendTime: Double)
 
@@ -81,7 +82,7 @@ class Chat extends AggregateProgram
 
   override def main() = {
     var newTargets = Set[ID]()
-    val source: ID = if(nextRandom<SIM_PARAM_PROB_SEND) mid else -1
+    val source: ID = if(nextRandom<SIM_PARAM_PROB_SEND && currTime<SIM_PARAM_STOP_TIME) mid else -1
 
     env.put("target", false)
     env.put("source", source==mid)
