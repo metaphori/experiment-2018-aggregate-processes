@@ -59,9 +59,9 @@ trait CustomSpawn {
   }
 
   def simpleSpawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
-    share(Map[A, C]()) { case (_, nbrProcesses) => {
+    rep(Map[A, C]()) { case oldp => {
       // 1. Take active process instances from my neighbours
-      val nbrProcs = includingSelf.unionHoodSet(nbrProcesses().keySet)
+      val nbrProcs = includingSelf.unionHoodSet(nbr(oldp.keySet))
 
       // 2. New processes to be spawn, based on a generation condition
       val newProcs = params
@@ -72,6 +72,7 @@ trait CustomSpawn {
           val p = ProcInstance(arg)(process)
           vm.newExportStack
           val result = p.run(args)
+          env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1)
           if(result.value.get._2) vm.mergeExport else vm.discardExport
           arg -> result
         }.collect { case(p,pi) if pi.value.get._2 => p -> pi.value.get._1 }.toMap
@@ -84,11 +85,11 @@ trait CustomSpawn {
         val (result, status) = process(p)(a)
         val terminated = includingSelf.everyHood(nbr{finished})
         val (newResult, newStatus) = (result, status) match {
-          case _ if terminated     => env.put("bubble",0); (None, false)
-          case (_,     External)   => env.put("bubble",0); (None, false)
-          case (_,     Terminated) => env.put("bubble",0); (None, true)
-          case (value, Output)     => env.put("bubble",2); (Some(value), true)
-          case (_,     Bubble)     => env.put("bubble",1); (None, true)
+          case _ if terminated     => (None, false)
+          case (_,     External)   => (None, false)
+          case (_,     Terminated) => (None, true)
+          case (value, Output)     => (Some(value), true)
+          case (_,     Bubble)     => (None, true)
         }
         (status == Terminated | includingSelf.anyHood(nbr{finished}), newResult, newStatus)
       } }

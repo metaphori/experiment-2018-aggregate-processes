@@ -1,6 +1,0 @@
-Exception in thread "main" java.lang.IllegalStateException: {formula=if($incarnation==0) "Scafi" else "Protelis", language=scala} is not a valid incarnation. Supported incarnations are: [scafi, biochemistry, sapere, protelis]
-	at it.unibo.alchemist.loader.YamlLoader.lambda$new$3(YamlLoader.java:231)
-	at java.util.Optional.orElseThrow(Optional.java:290)
-	at it.unibo.alchemist.loader.YamlLoader.<init>(YamlLoader.java:229)
-	at it.unibo.alchemist.loader.YamlLoader.<init>(YamlLoader.java:203)
-	at it.unibo.alchemist.Alchemist.main(Alchemist.java:89)

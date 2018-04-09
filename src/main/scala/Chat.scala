@@ -5,20 +5,27 @@ class Chat extends AggregateProgram
   override type MainResult = Any
 
   val centre = 189
-  val targets = Vector(200,77)
-  val source = 22
-
-  val startEvery = 20 // A generation impulse every 20 time units
 
   def delta: Int = dt(whenNan = 0).toInt
 
-  def chat(centre: ID, newTargets: Set[ID]) = {
-    type InitParams = (ID, ID, String)  // source, target, msg
+  val SIM_METRIC_N_MSGS_RECEIVED = "msg_received"
+  val SIM_METRIC_N_MSGS_SENT = "msg_sent"
+  val SIM_METRIC_TIME_TO_ARRIVE = "cumulative_time"
+
+  lazy val SIM_PARAM_PROB_SEND = sense[Double]("prob_send")
+  lazy val SIM_PARAM_N_DEVICES = sense[Int]("ndevices")
+
+  case class Msg(str: String, sendTime: Double)
+
+  var receivedMsgs = Set[Msg]()
+
+  def chat(centre: ID, source: ID, newTargets: Set[ID]) = {
+    type InitParams = (ID, ID, Msg)  // source, target, msg
     type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
-    type Result = String
+    type Result = Msg
 
     val chatComputation: InitParams => RuntimeParams => (Result, Status) = {
-      case (src: ID, target: ID, msg: String) => { case (distToCentre, parentToCentre, dependentNodes) => {
+      case (src: ID, target: ID, msg: Msg) => { case (distToCentre, parentToCentre, dependentNodes) => {
         val distToSource = distanceTo(src == mid)
         val (distToTarget, parentInPathToTarget) = distanceToWithParent(target == mid) // distance and direction to target
 
@@ -31,24 +38,20 @@ class Chat extends AggregateProgram
 
         val status: Status = branch(mid == target) {
           mux[Status](rep(0)(_+1)==1) {
-            env.put("bubble",2); Output
+            if(!receivedMsgs.contains(msg)) {
+              receivedMsgs += msg
+              env.put(SIM_METRIC_N_MSGS_RECEIVED, env.get[Double](SIM_METRIC_N_MSGS_RECEIVED) + 1)
+              env.put(SIM_METRIC_TIME_TO_ARRIVE, env.get[Double](SIM_METRIC_TIME_TO_ARRIVE) + (currTime - msg.sendTime))
+            }
+            Output
           } {
-            env.put("bubble",3); Terminated
+            Terminated
           }
         } { if (inRegion) {
-          env.put("bubble", 1)
           Bubble
         } else {
-          env.put("bubble", 0)
           External
         } }
-
-        env.put("dist_to_source", distToSource)
-        env.put("dist_to_target", distToTarget)
-        env.put("in_region", inRegion)
-        env.put("in_path_from_source_to_center", inPathFromSrcToCentre)
-        env.put("in_path_from_target_to_center", inPathFromTargetToCentre)
-        env.put(s"proc_${src}_${target}", s"Msg '$msg'. Status: $status")
 
         (msg, status)
       }
@@ -61,40 +64,30 @@ class Chat extends AggregateProgram
     } // set of nodes whose path towards gen passes through me
 
     env.put("gradient", distToCentre)
-    env.put("parent_to_centre", parentToCentre)
-    env.put("dependend_nodes", dependentNodes)
 
     val targets_found: Map[InitParams, Result] =
       spawn[InitParams,RuntimeParams,Result](chatComputation,
-        newTargets.map(t => (source, t, s"Msg from $mid to $t")),
+        newTargets.map(t => (source, t, Msg(s"Msg from $mid to $t", currTime))),
         (distToCentre, parentToCentre, dependentNodes))
     targets_found
   }
-
-//  implicit class RichFieldOps(fo: FieldOps) {
-//    def everyHood(p: => Boolean): Boolean = {
-//      fo.foldhoodTemplate(true)(_&&_)(nbr{p})
-//    }
-//  }
 
   /*****************************
   ** MAIN PROGRAM ENTRY POINT **
   ******************************/
 
   override def main() = {
-    val newTargets: Set[ID] = branch(mid==source){
-      val t = timer(200)
-      if(t > 140 && t < 180) Set(targets(0))
-      else Set(targets(1))
-    }{ Set() }
-    val chg = captureChange(newTargets)
+    var newTargets = Set[ID]()
+    val source: ID = if(nextRandom<SIM_PARAM_PROB_SEND) mid else -1
+    if(source==mid) {
+      env.put(SIM_METRIC_N_MSGS_SENT, env.get[Double](SIM_METRIC_N_MSGS_SENT)+1)
+      newTargets += Math.round(nextRandom * SIM_PARAM_N_DEVICES).toInt
+    }
 
-    env.put("target", targets.contains(mid))
-    env.put("newtargets", chg)
-    env.put("source", source==mid)
     env.put("centre", centre==mid)
+    env.put(SIM_METRIC_N_PROCS_RUN, 0.0)
 
-    chat(centre, if(chg) newTargets else Set[ID]())
+    chat(centre, source, newTargets)
   }
 
   /*****************************

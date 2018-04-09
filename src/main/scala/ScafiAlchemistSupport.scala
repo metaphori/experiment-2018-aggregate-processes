@@ -37,4 +37,6 @@ trait ScafiAlchemistSupport { self: AggregateProgram with StandardSensors =>
     vm.nest(FunCall[T](vm.index, getCallerClass(PlatformDependentConstants.StackTracePosition).getName()))(true) {
       f
     }
+
+  val SIM_METRIC_N_PROCS_RUN = "n_procs_run"
 }
