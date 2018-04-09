@@ -84,11 +84,11 @@ trait CustomSpawn {
         val (result, status) = process(p)(a)
         val terminated = includingSelf.everyHood(nbr{finished})
         val (newResult, newStatus) = (result, status) match {
-          case _ if terminated     => (None, false)
-          case (_,     External)   => (None, false)
-          case (_,     Terminated) => (None, true)
-          case (value, Output)     => (Some(value), true)
-          case (_,     Bubble)     => (None, true)
+          case _ if terminated     => env.put("bubble",0); (None, false)
+          case (_,     External)   => env.put("bubble",0); (None, false)
+          case (_,     Terminated) => env.put("bubble",0); (None, true)
+          case (value, Output)     => env.put("bubble",2); (Some(value), true)
+          case (_,     Bubble)     => env.put("bubble",1); (None, true)
         }
         (status == Terminated | includingSelf.anyHood(nbr{finished}), newResult, newStatus)
       } }
