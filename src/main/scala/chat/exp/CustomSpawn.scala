@@ -61,9 +61,9 @@ trait CustomSpawn {
   }
 
   def simpleSpawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
-    rep(Map[A, C]()) { case oldp => {
+    share(Map[A, C]()) { case (_, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
-      val nbrProcs = includingSelf.unionHoodSet(nbr(oldp.keySet))
+      val nbrProcs = includingSelf.unionHoodSet(nbrProcesses().keySet)
 
       // 2. New processes to be spawn, based on a generation condition
       val newProcs = params
@@ -85,7 +85,7 @@ trait CustomSpawn {
     simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
       val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
-        val newFinished = includingSelf.anyHood(nbr{finished})
+        val newFinished = status == Terminated | includingSelf.anyHood(nbr{finished})
         val terminated = includingSelf.everyHood(nbr{newFinished})
         val (newResult, newStatus) = (result, status) match {
           case _ if terminated     => (None, false)
@@ -94,7 +94,7 @@ trait CustomSpawn {
           case (value, Output)     => (Some(value), true)
           case (_,     Bubble)     => (None, true)
         }
-        (status == Terminated || newFinished, newResult, newStatus)
+        (newFinished, newResult, newStatus)
       } }
       (result, status)
     }, params, args).collect { case (k, Some(p)) => k -> p }

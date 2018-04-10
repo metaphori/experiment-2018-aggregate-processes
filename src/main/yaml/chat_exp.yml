@@ -1,7 +1,7 @@
 variables:
   random: &random
     min: 0
-    max: 3
+    max: 1
     step: 1
     default: 0
   commRadius: &commRadius
@@ -53,6 +53,8 @@ pools:
     - time-distribution:
         type: ExponentialTime
         parameters: [1, 0.5]
+        #type: RandomWeibullTime
+        #parameters: [1, 0.2, 0.2]
       type: Event
       actions:
         - type: RunScafiProgram

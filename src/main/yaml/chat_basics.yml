@@ -34,8 +34,8 @@ incarnation: scafi
 pools:
   - pool: &program
     - time-distribution:
-        type: ExponentialTime
-        parameters: [1, 0.5]
+        type: RandomWeibullTime
+        parameters: [1, 0.5, 0.5]
       type: Event
       actions:
         - type: RunScafiProgram
