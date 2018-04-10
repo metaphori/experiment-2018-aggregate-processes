@@ -85,7 +85,8 @@ trait CustomSpawn {
     simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
       val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
-        val terminated = includingSelf.everyHood(nbr{finished})
+        val newFinished = includingSelf.anyHood(nbr{finished})
+        val terminated = includingSelf.everyHood(nbr{newFinished})
         val (newResult, newStatus) = (result, status) match {
           case _ if terminated     => (None, false)
           case (_,     External)   => (None, false)
@@ -93,7 +94,7 @@ trait CustomSpawn {
           case (value, Output)     => (Some(value), true)
           case (_,     Bubble)     => (None, true)
         }
-        (status == Terminated | includingSelf.anyHood(nbr{finished}), newResult, newStatus)
+        (status == Terminated || newFinished, newResult, newStatus)
       } }
       (result, status)
     }, params, args).collect { case (k, Some(p)) => k -> p }
