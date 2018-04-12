@@ -100,6 +100,63 @@ trait CustomSpawn {
     }, params, args).collect { case (k, Some(p)) => k -> p }
   }
 
+  /**********************************************
+    *************** COOMPACT SPAWN **************
+    *********************************************/
+
+  case class SpawnReturn[C](value: C, status: Boolean)
+
+  def compactSimpleSpawn[A, B, C](process: A => B => SpawnReturn[C], newProcesses: Set[A], args: B): Map[A,C] =
+    share(Map[A, C]()) { case (_, nbrProcesses) =>
+      (includingSelf.unionHoodSet(nbrProcesses().keySet) ++ newProcesses)
+        .foldLeft(Map.empty[A,C]) { (m,pid) =>
+          env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1)
+          simplyReturn{ run(process, pid, args) }.iff(_.status).map(v => m + (pid -> v.value)).getOrElse(m)
+        }
+    }
+
+  def run[A,B,C](proc: A => B => SpawnReturn[C], params: A, args: B): SpawnReturn[C] =
+    align(s"process_${params.hashCode}") { _ => proc(params)(args) }
+
+  class IffContinuation[T](expr: => T){
+    def iff(pred: T => Boolean): Option[T] = {
+      vm.newExportStack
+      val result = expr
+      if(pred(result)){
+        vm.mergeExport
+        Some(result)
+      } else {
+        vm.discardExport
+        None
+      }
+    }
+  }
+
+  def simplyReturn[T](expr: => T) = new IffContinuation[T](expr)
+
+  def compactSpawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
+    compactSimpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
+      val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
+        val (result, status) = process(p)(a)
+        val newFinished = status == Terminated | includingSelf.anyHood(nbr{finished})
+        val terminated = includingSelf.everyHood(nbr{newFinished})
+        val SpawnReturn(newResult, newStatus) = (result, status) match {
+          case _ if terminated     => SpawnReturn(None, false)
+          case (_,     External)   => SpawnReturn(None, false)
+          case (_,     Terminated) => SpawnReturn(None, true)
+          case (value, Output)     => SpawnReturn(Some(value), true)
+          case (_,     Bubble)     => SpawnReturn(None, true)
+        }
+        (newFinished, newResult, newStatus)
+      } }
+      SpawnReturn(result, status)
+    }, params, args).collect { case (k, Some(p)) => k -> p }
+  }
+
+  /**********************************************
+    ******************* UTILS *******************
+    *********************************************/
+
   implicit class RichFieldOps(fo: FieldOps) {
     def everyHood(p: => Boolean): Boolean = {
       fo.foldhoodTemplate(true)(_&&_)(nbr{p})
