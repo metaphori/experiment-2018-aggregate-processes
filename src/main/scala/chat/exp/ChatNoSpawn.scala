@@ -52,9 +52,17 @@ class ChatNoSpawn extends AggregateProgram
       env.put(SIM_METRIC_N_PROCS_RUN, activeMsgs.size)
 
       // Garbage collection
-      val removedMsgsGC = Set[Msg]()
+      val garbage = includingSelf.intersectionHoodSet(nbr(removedMsgs))
 
-      (activeMsgs, allRemovedMsgs -- removedMsgsGC ++ toRemove)
+      (activeMsgs -- garbage, allRemovedMsgs -- garbage ++ toRemove)
+    }
+  }
+
+  implicit class MyRichFieldOps(fo: FieldOps) {
+    import fo._
+    def intersectionHoodSet[T](expr: => Iterable[T]): Set[T] = {
+      var first = true
+      foldhoodTemplate[Set[T]](Set())((acc,x) => if(first){ first = false; x } else acc.intersect(x))(expr.toSet)
     }
   }
 
