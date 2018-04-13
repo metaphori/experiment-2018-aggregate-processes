@@ -112,21 +112,25 @@ trait CustomSpawn {
     override def filter = status
   }
 
-  def compactSimpleSpawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
+  def spawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
     spreadKeys[Key,R](newProcesses){ key => process(key)(args) }
 
-  def spreadKeys[K,R](newKeys: Set[K])(mapKeys: K => MapFilter[R]): Map[K,R] =
+  def spreadKeys[K,R](newKeys: Set[K])(mapKey: K => MapFilter[R]): Map[K,R] =
     share(Map[K,R]()) { case (_, nbrKeys) =>
-      (includingSelf.unionHoodSet(nbrKeys().keySet) ++ newKeys)
-        .foldLeft(Map.empty[K,R]) { (m,key) =>
-          simplyReturn{
-            align(s"${mapKeys.getClass.getName}_${key.hashCode}"){ _ => mapKeys(key) }
-          }
-            .filteringExport
-            .iff(_.filter)
-            .map(v => m + (key -> v.value)).getOrElse(m)
-        }
+      (includingSelf.unionHoodSet(nbrKeys().keySet) ++ newKeys).mapAndFilter[R]{ (key: K) =>
+          simplyReturn(alignedExecution(mapKey)(key)).filteringExport.iff(_.filter).map(_.value)
+      }
     }
+
+  implicit class MyRichSet[K](val set: Set[K]) {
+    def mapAndFilter[V](f: K => Option[V]): Map[K,V] =
+      set.foldLeft(Map.empty[K,V]) { (m,key) =>
+        f(key).map(v => m + (key -> v)).getOrElse(m)
+      }
+  }
+
+  def alignedExecution[K,V](p: K => V)(key: K): V =
+    align(s"${p.getClass.getName}_${key.hashCode}"){ _ => p(key) }
 
   def run[A,B,C](proc: A => B => SpawnReturn[C], params: A, args: B): SpawnReturn[C] =
     align(s"process_${params.hashCode}") { _ => proc(params)(args) }
