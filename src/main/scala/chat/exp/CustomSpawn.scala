@@ -100,6 +100,17 @@ trait CustomSpawn {
     }, params, args).collect { case (k, Some(p)) => k -> p }
   }
 
+  object on {
+    def apply[K](set: Set[K]) = new SpawnKeys(set)
+  }
+  class SpawnKeys[K](val keys: Set[K]) {
+    def withArgs[Args](args: Args) = new SpawnContinuation(keys, args)
+  }
+  class SpawnContinuation[K,Args](val keys: Set[K], val args: Args){
+    def spawn[R](proc: K => Args => (R,Status)): Map[K,R] =
+      compactSpawn(proc, keys, args)
+  }
+
   /**********************************************
     *************** COOMPACT SPAWN **************
     *********************************************/
@@ -112,8 +123,8 @@ trait CustomSpawn {
     override def filter = status
   }
 
-  def spawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
-    spreadKeys[Key,R](newProcesses){ key => process(key)(args) }
+  def compactSimpleSpawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
+    spreadKeys[Key,R](newProcesses){ key => env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1); process(key)(args) }
 
   def spreadKeys[K,R](newKeys: Set[K])(mapKey: K => MapFilter[R]): Map[K,R] =
     share(Map[K,R]()) { case (_, nbrKeys) =>

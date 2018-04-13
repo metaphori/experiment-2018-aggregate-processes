@@ -18,62 +18,59 @@ class Chat extends AggregateProgram
   lazy val SIM_PARAM_N_DEVICES = sense[Int]("ndevices")
   lazy val SIM_PARAM_STOP_TIME = sense[Int]("stop_send_time")
 
-  case class Msg(str: String, sendTime: Double)
+  case class Msg(src: ID, target: ID, str: String) {
+    val sendTime: Double = currTime
+  }
+  case class ChatArgs(distToCentre: Double, parentToCentre: ID, dependentNodes: Set[ID])
 
   var receivedMsgs = Set[Msg]()
 
+  def chatProcessLogic(msg: Msg)
+                      (args: ChatArgs): (Msg,Status) = {
+    val inPathFromSrcToCentre = msg.src==mid | includingSelf.anyHood {
+      nbr(args.parentToCentre) == mid
+    }
+    val inPathFromTargetToCentre = args.dependentNodes.contains(msg.target)
+    val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre
+
+    (msg, multiBranch[Status]
+      .when(mid == msg.target){ mux[Status](rep(0)(_+1)==1){
+        if(!receivedMsgs.contains(msg)) {
+          receivedMsgs += msg
+          env.put(SIM_METRIC_N_MSGS_RECEIVED, env.get[Double](SIM_METRIC_N_MSGS_RECEIVED) + 1)
+          env.put(SIM_METRIC_TIME_TO_ARRIVE, env.get[Double](SIM_METRIC_TIME_TO_ARRIVE) + (currTime - msg.sendTime))
+        };Output}{Terminated} }
+      .when(mid != msg.target && inRegion){ Bubble }
+      .otherwise{ External })
+  }
+
+  object multiBranch {
+    def apply[T] = new MultiBranchContinuation[T]()
+  }
+  class MultiBranchContinuation[R] { outmbranch =>
+    var cases = Vector[(Boolean,()=>R)]()
+    def when(m: Boolean)(f: => R) = new MultiBranchContinuation[R] { cases = outmbranch.cases :+ (m, () => f) }
+    def otherwise(f: => R) = when(true)(f)
+    def run(seq: Vector[(Boolean,()=>R)]): R = seq match {
+      case (true,expr) +: t => branch[R](true){ expr() }{ ??? }
+      case (false,_) +: t => branch[R](false){ ??? }{ run(t) }
+    }
+    def run: R = run(cases)
+  }
+  implicit def branchToValue[R](mbranch: MultiBranchContinuation[R]): R = mbranch.run
+
   def chat(centre: ID, source: ID, newTargets: Set[ID]) = {
-    type InitParams = (ID, ID, Msg)  // source, target, msg
-    type RuntimeParams = (Double, ID, Set[ID])  // dist to centre, parent to centre, set of nodes
-    type Result = Msg
-
-    val chatComputation: InitParams => RuntimeParams => (Result, Status) = {
-      case (src: ID, target: ID, msg: Msg) => { case (distToCentre, parentToCentre, dependentNodes) => {
-        val distToSource = distanceTo(src == mid)
-        val (distToTarget, parentInPathToTarget) = distanceToWithParent(target == mid) // distance and direction to target
-
-        val inPathFromSrcToCentre = src==mid | includingSelf.anyHood {
-          nbr(parentToCentre) == mid
-        } // am I in path from src to centre?
-        val inPathFromTargetToCentre = dependentNodes.contains(target) // am I in path from target to centre?
-        //val middle = anyHood(distToSource + nbrRange < nbr(distToSource)) // do I improve distance src-target?
-        val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
-
-        val status: Status = branch(mid == target) {
-          env.put("target", true)
-          mux[Status](rep(0)(_+1)==1) {
-            if(!receivedMsgs.contains(msg)) {
-              receivedMsgs += msg
-              env.put(SIM_METRIC_N_MSGS_RECEIVED, env.get[Double](SIM_METRIC_N_MSGS_RECEIVED) + 1)
-              env.put(SIM_METRIC_TIME_TO_ARRIVE, env.get[Double](SIM_METRIC_TIME_TO_ARRIVE) + (currTime - msg.sendTime))
-            }
-            Output
-          } {
-            Terminated
-          }
-        } { if (inRegion) {
-          Bubble
-        } else {
-          External
-        } }
-
-        (msg, status)
-      }
-    } }
-
     val (distToCentre, parentToCentre) = distanceToWithParent(centre == mid)
 
-    val dependentNodes = rep(Set[ID]()){ case (s: Set[ID]) =>
-      excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set[ID]() }) + mid
+    val dependentNodes = rep(Set.empty[ID]){ case (s: Set[ID]) =>
+      excludingSelf.unionHoodSet[ID](mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set.empty[ID] }) + mid
     } // set of nodes whose path towards gen passes through me
 
     env.put("gradient", distToCentre)
 
-    val targets_found: Map[InitParams, Result] =
-      spawn[InitParams,RuntimeParams,Result](chatComputation,
-        newTargets.map(t => (source, t, Msg(s"Msg from $mid to $t", currTime))),
-        (distToCentre, parentToCentre, dependentNodes))
-    targets_found
+    on(newTargets.map(t => Msg(source, t, s"Msg from $mid to $t")))
+        .withArgs(ChatArgs(distToCentre, parentToCentre, dependentNodes))
+        .spawn(chatProcessLogic(_)).values
   }
 
   /*****************************
