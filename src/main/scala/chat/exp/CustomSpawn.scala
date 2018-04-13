@@ -24,11 +24,18 @@ trait CustomSpawn {
   self: AggregateProgram with ScafiAlchemistSupport with FieldUtils =>
 
   trait Status
+  object Status {
+    val External: Status = ExternalStatus
+    val Bubble: Status = BubbleStatus
+    val Output: Status = OutputStatus
+    val Terminated: Status = TerminatedStatus
+  }
+  import Status._
 
-  case object External extends Status   // External to the bubble
-  case object Bubble extends Status     // Within the bubble
-  case object Output extends Status     // Within the bubble and bubble output producer
-  case object Terminated extends Status // Notifies the willingness to terminate the bubble
+  case object ExternalStatus extends Status   // External to the bubble
+  case object BubbleStatus extends Status     // Within the bubble
+  case object OutputStatus extends Status     // Within the bubble and bubble output producer
+  case object TerminatedStatus extends Status // Notifies the willingness to terminate the bubble
 
   case class ProcInstance[A, B, C](params: A)(val proc: A => B => C, val value: Option[C] = None)
   {

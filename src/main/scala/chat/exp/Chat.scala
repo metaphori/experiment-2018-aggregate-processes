@@ -6,6 +6,8 @@ class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
 
+  import Status._
+
   val centre = 189
 
   def delta: Int = dt(whenNan = 0).toInt
@@ -34,30 +36,15 @@ class Chat extends AggregateProgram
     val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre
 
     (msg, multiBranch[Status]
-      .when(mid == msg.target){ mux[Status](rep(0)(_+1)==1){
+      .when(mid == msg.target){ justOnce({
         if(!receivedMsgs.contains(msg)) {
           receivedMsgs += msg
           env.put(SIM_METRIC_N_MSGS_RECEIVED, env.get[Double](SIM_METRIC_N_MSGS_RECEIVED) + 1)
           env.put(SIM_METRIC_TIME_TO_ARRIVE, env.get[Double](SIM_METRIC_TIME_TO_ARRIVE) + (currTime - msg.sendTime))
-        };Output}{Terminated} }
+        };Output}, thereafter = Terminated) }
       .when(mid != msg.target && inRegion){ Bubble }
       .otherwise{ External })
   }
-
-  object multiBranch {
-    def apply[T] = new MultiBranchContinuation[T]()
-  }
-  class MultiBranchContinuation[R] { outmbranch =>
-    var cases = Vector[(Boolean,()=>R)]()
-    def when(m: Boolean)(f: => R) = new MultiBranchContinuation[R] { cases = outmbranch.cases :+ (m, () => f) }
-    def otherwise(f: => R) = when(true)(f)
-    def run(seq: Vector[(Boolean,()=>R)]): R = seq match {
-      case (true,expr) +: t => branch[R](true){ expr() }{ ??? }
-      case (false,_) +: t => branch[R](false){ ??? }{ run(t) }
-    }
-    def run: R = run(cases)
-  }
-  implicit def branchToValue[R](mbranch: MultiBranchContinuation[R]): R = mbranch.run
 
   def chat(centre: ID, source: ID, newTargets: Set[ID]) = {
     val (distToCentre, parentToCentre) = distanceToWithParent(centre == mid)
@@ -98,6 +85,24 @@ class Chat extends AggregateProgram
   /*****************************
    ** Functions **
    ******************************/
+
+  object multiBranch {
+    def apply[T] = new MultiBranchContinuation[T]()
+  }
+  class MultiBranchContinuation[R] { outmbranch =>
+    var cases = Vector[(Boolean,()=>R)]()
+    def when(m: Boolean)(f: => R) = new MultiBranchContinuation[R] { cases = outmbranch.cases :+ (m, () => f) }
+    def otherwise(f: => R) = when(true)(f)
+    def run(seq: Vector[(Boolean,()=>R)]): R = seq match {
+      case (true,expr) +: t => branch[R](true){ expr() }{ ??? }
+      case (false,_) +: t => branch[R](false){ ??? }{ run(t) }
+    }
+    def run: R = run(cases)
+  }
+  implicit def branchToValue[R](mbranch: MultiBranchContinuation[R]): R = mbranch.run
+
+  def justOnce[T](that: T, thereafter: T): T =
+    mux(rep(0)(_+1)==1){ that }{ thereafter }
 
   def gossipEver(x: Boolean) =
     rep(x){ old => x | includingSelf.anyHood(nbr{old}) }
