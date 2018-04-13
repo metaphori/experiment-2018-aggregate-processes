@@ -18,7 +18,7 @@ variables:
   prob_send: &prob_send
     formula: "1.0/$ndevices"
   stop_send_time: &stop_send_time
-    formula: 50
+    formula: 250
               
 export:
   - time

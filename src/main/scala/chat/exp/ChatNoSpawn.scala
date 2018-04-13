@@ -29,7 +29,7 @@ class ChatNoSpawn extends AggregateProgram
       env.put("removed_msgs", removedMsgs)
 
       val nbrMsgs = includingSelf.unionHoodSet(nbr(mine))
-      val allRemovedMsgs = includingSelf.unionHoodSet(nbr(removedMsgs))
+      val allRemovedMsgs = includingSelf.unionHoodSet(nbr(removedMsgs)).intersect(nbrMsgs)
       val diff = nbrMsgs -- allRemovedMsgs
 
       // Messages that arrived to me are to be removed
@@ -43,7 +43,6 @@ class ChatNoSpawn extends AggregateProgram
 
       // New messages to be propagated
       val newMsgs = newTargets.map(target => {
-        env.put(SIM_METRIC_N_MSGS_SENT, env.get[Double](SIM_METRIC_N_MSGS_SENT) + 1)
         Msg(s"${mid()}${currTime}")(mid, target, currTime)
       })
 
@@ -51,10 +50,7 @@ class ChatNoSpawn extends AggregateProgram
       val activeMsgs = diff -- toRemove ++ newMsgs
       env.put(SIM_METRIC_N_PROCS_RUN, activeMsgs.size)
 
-      // Garbage collection
-      val garbage = includingSelf.intersectionHoodSet(nbr(removedMsgs))
-
-      (activeMsgs -- garbage, allRemovedMsgs -- garbage ++ toRemove)
+      (activeMsgs, allRemovedMsgs ++ toRemove)
     }
   }
 
