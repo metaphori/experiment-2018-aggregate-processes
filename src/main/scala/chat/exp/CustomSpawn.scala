@@ -104,14 +104,27 @@ trait CustomSpawn {
     *************** COOMPACT SPAWN **************
     *********************************************/
 
-  case class SpawnReturn[C](value: C, status: Boolean)
+  trait MapFilter[V] {
+    def value: V
+    def filter: Boolean
+  }
+  case class SpawnReturn[C](value: C, status: Boolean) extends MapFilter[C] {
+    override def filter = status
+  }
 
-  def compactSimpleSpawn[A, B, C](process: A => B => SpawnReturn[C], newProcesses: Set[A], args: B): Map[A,C] =
-    share(Map[A, C]()) { case (_, nbrProcesses) =>
-      (includingSelf.unionHoodSet(nbrProcesses().keySet) ++ newProcesses)
-        .foldLeft(Map.empty[A,C]) { (m,pid) =>
-          env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1)
-          simplyReturn{ run(process, pid, args) }.iff(_.status).map(v => m + (pid -> v.value)).getOrElse(m)
+  def compactSimpleSpawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
+    spreadKeys[Key,R](newProcesses){ key => process(key)(args) }
+
+  def spreadKeys[K,R](newKeys: Set[K])(mapKeys: K => MapFilter[R]): Map[K,R] =
+    share(Map[K,R]()) { case (_, nbrKeys) =>
+      (includingSelf.unionHoodSet(nbrKeys().keySet) ++ newKeys)
+        .foldLeft(Map.empty[K,R]) { (m,key) =>
+          simplyReturn{
+            align(s"${mapKeys.getClass.getName}_${key.hashCode}"){ _ => mapKeys(key) }
+          }
+            .filteringExport
+            .iff(_.filter)
+            .map(v => m + (key -> v.value)).getOrElse(m)
         }
     }
 
@@ -119,14 +132,21 @@ trait CustomSpawn {
     align(s"process_${params.hashCode}") { _ => proc(params)(args) }
 
   class IffContinuation[T](expr: => T){
+    var filterExport: Boolean = false
+
+    def filteringExport =
+      new IffContinuation[T](expr){
+        filterExport = true
+      }
+
     def iff(pred: T => Boolean): Option[T] = {
-      vm.newExportStack
+      if(filterExport) vm.newExportStack
       val result = expr
       if(pred(result)){
-        vm.mergeExport
+        if(filterExport) vm.mergeExport
         Some(result)
       } else {
-        vm.discardExport
+        if(filterExport) vm.discardExport
         None
       }
     }
