@@ -1,9 +1,9 @@
-package chat.exp
+package it.unibo
 
+import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.alchemist.implementation.nodes.NodeManager
 import it.unibo.alchemist.model.interfaces.Time
 import it.unibo.scafi.PlatformDependentConstants
-import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
 /*
  * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.

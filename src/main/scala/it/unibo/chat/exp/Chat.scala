@@ -1,6 +1,7 @@
-package chat.exp
+package it.unibo.chat.exp
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
 class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
@@ -23,7 +24,7 @@ class Chat extends AggregateProgram
   case class Msg(src: ID, target: ID, str: String) {
     val sendTime: Double = currTime
   }
-  case class ChatArgs(distToCentre: Double, parentToCentre: ID, dependentNodes: Set[ID])
+  case class ChatArgs(parentToCentre: ID, dependentNodes: Set[ID])
 
   var receivedMsgs = Set[Msg]()
 
@@ -56,7 +57,7 @@ class Chat extends AggregateProgram
     env.put("gradient", distToCentre)
 
     on(newTargets.map(t => Msg(source, t, s"Msg from $mid to $t")))
-        .withArgs(ChatArgs(distToCentre, parentToCentre, dependentNodes))
+        .withArgs(ChatArgs(parentToCentre, dependentNodes))
         .spawn(chatProcessLogic(_)).values
   }
 

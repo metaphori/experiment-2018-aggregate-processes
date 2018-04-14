@@ -1,6 +1,7 @@
-package chat.exp
+package it.unibo.chat.exp
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
 class ChatNoSpawn extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {

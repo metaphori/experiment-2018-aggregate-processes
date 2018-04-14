@@ -1,10 +1,13 @@
-package multigradient
+package it.unibo.multigradient
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
 class MultiGradient extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
+
+  import Status._
 
   val (idSource1, idSource2) = (0, 378)
   val generators = Set(189,285,294,125,114)

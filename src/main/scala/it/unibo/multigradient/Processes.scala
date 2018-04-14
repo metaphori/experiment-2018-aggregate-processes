@@ -1,29 +1,9 @@
-package multigradient
+package it.unibo.multigradient
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
-/*
- * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.
- * See the LICENCE.txt file distributed with this work for additional
- * information regarding copyright ownership.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-*/
-
 trait Processes {
-  self: FieldCalculusSyntax with StandardSensors with FieldUtils => // Here, fold operations by default only look at neighbours (i.e., not myself)
-
-  import excludingSelf._
+  self: FieldCalculusSyntax with StandardSensors with FieldUtils =>
 
   val TimeGC: Long = 20
 
@@ -101,7 +81,7 @@ trait Processes {
             counter = if(data.gen && !data.stop) Some(data.counter.map(_ + 1).getOrElse(0)) else None,
             distance = 0.0)
         }{ // Non-generator node
-          minHoodSelector[Double,(Double,Option[Long])]{ nbr(data.distance) }{
+          excludingSelf.minHoodSelector[Double,(Double,Option[Long])]{ nbr(data.distance) }{
             (nbr(data.distance) + nbrRange, nbr(data.counter))
           }.map {
             case (newDist, newCount) if newCount.isDefined && newDist <= process.limit && data.staleValue < process.timeGC =>
@@ -129,7 +109,7 @@ trait Processes {
     rep(Map[PUID,ProcessInstance[T]]())(currProcs => {
       // 1. Select process instances extended up to me from neighbours;
       //    when more neighbours run the same process, priority is given to the one closer to the process source
-      val nbrProcs = mergeHoodFirst { nbr(currProcs).filterValues(processWithinLimits(_)) }.mapValues(_.forNonGenerator)
+      val nbrProcs = excludingSelf.mergeHoodFirst { nbr(currProcs).filterValues(processWithinLimits(_)) }.mapValues(_.forNonGenerator)
 
       // 2. New processes to be spawn, based on a generation condition
       val newProcs = generators.view.filter(_.checkTrigger).map(_.generate).map(pi => pi.puid -> pi.forGenerator)

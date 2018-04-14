@@ -1,10 +1,13 @@
-package chat.basics
+package it.unibo.chat.basics
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
 class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
+
+  import Status._
 
   val centre = 189
   val targets = Vector(200,77)
