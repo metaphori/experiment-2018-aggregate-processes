@@ -35,18 +35,8 @@ class Chat extends AggregateProgram
         val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre // || middle
 
         val status: Status = branch(mid == target) {
-          mux[Status](rep(0)(_+1)==1) {
-            env.put("bubble",2); Output
-          } {
-            env.put("bubble",3); Terminated
-          }
-        } { if (inRegion) {
-          env.put("bubble", 1)
-          Bubble
-        } else {
-          env.put("bubble", 0)
-          External
-        } }
+          mux[Status](rep(0)(_+1)==1) { Output } { Terminated }
+        } { if (inRegion) { Bubble } else { External } }
 
         env.put("dist_to_source", distToSource)
         env.put("dist_to_target", distToTarget)
