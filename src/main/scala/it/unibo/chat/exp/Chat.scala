@@ -3,6 +3,17 @@ package it.unibo.chat.exp
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
+object Metrics {
+  val MSGS_RECEIVED_SPAWN = "msg_received_spawn"
+  val MSGS_RECEIVED_NOSPAWN = "msg_received_nospawn"
+  val MSGS_SENT_SPAWN = "msg_sent_spawn"
+  val MSGS_SENT_NOSPAWN = "msg_sent_nospawn"
+  val TIME_TO_ARRIVE_SPAWN = "cumulative_time_spawn"
+  val TIME_TO_ARRIVE_NOSPAWN = "cumulative_time_nospawn"
+  val ACTIVE_PROCESSES = "n_procs_run"
+  val ACTIVE_MSGS = "n_active_msgs"
+}
+
 class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
@@ -13,16 +24,13 @@ class Chat extends AggregateProgram
 
   def delta: Int = dt(whenNan = 0).toInt
 
-  val SIM_METRIC_N_MSGS_RECEIVED = "msg_received"
-  val SIM_METRIC_N_MSGS_SENT = "msg_sent"
-  val SIM_METRIC_TIME_TO_ARRIVE = "cumulative_time"
-
   lazy val SIM_PARAM_PROB_SEND = sense[Double]("prob_send")
   lazy val SIM_PARAM_N_DEVICES = sense[Int]("ndevices")
   lazy val SIM_PARAM_STOP_TIME = sense[Int]("stop_send_time")
 
-  case class Msg(src: ID, target: ID, str: String) {
+  case class Msg(mid: String)(val from: ID, val to: ID){
     val sendTime: Double = currTime
+    override def toString: String = s"Msg($mid)(from=$from; to=$to; sendTime=$sendTime)"
   }
   case class ChatArgs(parentToCentre: ID, dependentNodes: Set[ID])
 
@@ -30,20 +38,20 @@ class Chat extends AggregateProgram
 
   def chatProcessLogic(msg: Msg)
                       (args: ChatArgs): (Msg,Status) = {
-    val inPathFromSrcToCentre = msg.src==mid | includingSelf.anyHood {
+    val inPathFromSrcToCentre = msg.from==mid | includingSelf.anyHood {
       nbr(args.parentToCentre) == mid
     }
-    val inPathFromTargetToCentre = args.dependentNodes.contains(msg.target)
+    val inPathFromTargetToCentre = args.dependentNodes.contains(msg.to)
     val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre
 
     (msg, multiBranch[Status]
-      .when(mid == msg.target){ justOnce({
+      .when(mid == msg.to){ justOnce({
         if(!receivedMsgs.contains(msg)) {
           receivedMsgs += msg
-          env.put(SIM_METRIC_N_MSGS_RECEIVED, env.get[Double](SIM_METRIC_N_MSGS_RECEIVED) + 1)
-          env.put(SIM_METRIC_TIME_TO_ARRIVE, env.get[Double](SIM_METRIC_TIME_TO_ARRIVE) + (currTime - msg.sendTime))
+          env.put(Metrics.MSGS_RECEIVED_SPAWN, env.get[Double](Metrics.MSGS_RECEIVED_SPAWN) + 1)
+          env.put(Metrics.TIME_TO_ARRIVE_SPAWN, env.get[Double](Metrics.TIME_TO_ARRIVE_SPAWN) + (currTime - msg.sendTime))
         };Output}, thereafter = Terminated) }
-      .when(mid != msg.target && inRegion){ Bubble }
+      .when(mid != msg.to && inRegion){ Bubble }
       .otherwise{ External })
   }
 
@@ -56,9 +64,43 @@ class Chat extends AggregateProgram
 
     env.put("gradient", distToCentre)
 
-    on(newTargets.map(t => Msg(source, t, s"Msg from $mid to $t")))
+    on(newTargets.map(t => Msg(s"$mid->$t")(source, t)))
         .withArgs(ChatArgs(parentToCentre, dependentNodes))
         .spawn(chatProcessLogic(_)).values
+  }
+
+  var receivedMsgsNoSpawn = Set[Msg]()
+
+  def chatNoSpawn(centre: ID, source: ID, newTargets: Set[ID]) = {
+    env.put(Metrics.ACTIVE_MSGS, 0.0)
+    rep((Set[Msg](), Set[Msg]())) { case (mine, removedMsgs) =>
+      env.put("removed_msgs", removedMsgs)
+
+      val nbrMsgs = includingSelf.unionHoodSet(nbr(mine))
+      val allRemovedMsgs = includingSelf.unionHoodSet(nbr(removedMsgs)).intersect(nbrMsgs)
+      val diff = nbrMsgs -- allRemovedMsgs
+
+      // Messages that arrived to me are to be removed
+      var toRemove = diff.filter(_.to == mid)
+      toRemove.foreach(msg => {
+        env.put("target", true)
+        if(!receivedMsgsNoSpawn.contains(msg)) {
+          env.put(Metrics.MSGS_RECEIVED_NOSPAWN, env.get[Double](Metrics.MSGS_RECEIVED_NOSPAWN) + 1)
+          env.put(Metrics.TIME_TO_ARRIVE_NOSPAWN, env.get[Double](Metrics.TIME_TO_ARRIVE_NOSPAWN) + (currTime - msg.sendTime))
+          env.put(s"msg_${msg.mid}", msg)
+          receivedMsgsNoSpawn += msg
+        }
+      })
+
+      // New messages to be propagated
+      val newMsgs = newTargets.map(target => { Msg(s"${mid()}${currTime}")(mid, target) })
+
+      // Messages that are still alive in this round
+      val activeMsgs = diff -- toRemove ++ newMsgs
+      env.put(Metrics.ACTIVE_MSGS, activeMsgs.size)
+
+      (activeMsgs, allRemovedMsgs ++ toRemove)
+    }
   }
 
   /*****************************
@@ -73,14 +115,16 @@ class Chat extends AggregateProgram
     env.put("source", source==mid)
 
     if(source==mid) {
-      env.put(SIM_METRIC_N_MSGS_SENT, env.get[Double](SIM_METRIC_N_MSGS_SENT)+1)
+      env.put(Metrics.MSGS_SENT_SPAWN, env.get[Double](Metrics.MSGS_SENT_SPAWN)+1)
+      env.put(Metrics.MSGS_SENT_NOSPAWN, env.get[Double](Metrics.MSGS_SENT_NOSPAWN)+1)
       newTargets += Math.round(nextRandom * SIM_PARAM_N_DEVICES).toInt
     }
 
     env.put("centre", centre==mid)
-    env.put(SIM_METRIC_N_PROCS_RUN, 0.0)
+    env.put(Metrics.ACTIVE_PROCESSES, 0.0)
 
     chat(centre, source, newTargets)
+    chatNoSpawn(centre, source, newTargets)
   }
 
   /*****************************

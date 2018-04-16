@@ -23,18 +23,27 @@ variables:
 export:
   - time
   - molecule: n_procs_run
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: msg_sent_spawn
     aggregators: [sum]
     value-filter: ONLYFINITE
-  - molecule: n_procs_run
-    aggregators: [mean]
-    value-filter: ONLYFINITE
-  - molecule: msg_sent
+  - molecule: msg_received_spawn
     aggregators: [sum]
     value-filter: ONLYFINITE
-  - molecule: msg_received
+  - molecule: cumulative_time_spawn
     aggregators: [sum]
     value-filter: ONLYFINITE
-  - molecule: cumulative_time
+  - molecule: n_active_msgs
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: msg_sent_nospawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: msg_received_nospawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: cumulative_time_nospawn
     aggregators: [sum]
     value-filter: ONLYFINITE
 
@@ -66,11 +75,17 @@ pools:
       concentration: *commRadius
     - molecule: ndevices
       concentration: *ndevices
-    - molecule: msg_sent
+    - molecule: msg_sent_spawn
       concentration: 0.0
-    - molecule: msg_received
+    - molecule: msg_received_spawn
       concentration: 0.0
-    - molecule: cumulative_time
+    - molecule: cumulative_time_spawn
+      concentration: 0.0
+    - molecule: msg_sent_nospawn
+      concentration: 0.0
+    - molecule: msg_received_nospawn
+      concentration: 0.0
+    - molecule: cumulative_time_nospawn
       concentration: 0.0
     - molecule: prob_send
       concentration: *prob_send

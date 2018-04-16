@@ -60,7 +60,7 @@ class Chat extends AggregateProgram
     env.put("dependend_nodes", dependentNodes)
 
     val targets_found: Map[InitParams, Result] =
-      spawn[InitParams,RuntimeParams,Result](chatComputation,
+      sspawn[InitParams,RuntimeParams,Result](chatComputation,
         newTargets.map(t => (source, t, s"Msg from $mid to $t")),
         (distToCentre, parentToCentre, dependentNodes))
     targets_found

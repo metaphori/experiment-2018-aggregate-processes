@@ -1,9 +1,12 @@
 package it.unibo
 
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.chat.exp.Metrics
 
 trait CustomSpawn {
   self: AggregateProgram with ScafiAlchemistSupport with FieldUtils =>
+
+  val SIM_METRIC_N_PROCS_RUN = "n_procs_run"
 
   trait Status
   object Status {
@@ -49,7 +52,7 @@ trait CustomSpawn {
     }
   }
 
-  def simpleSpawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
+  def spawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C] = {
     share(Map[A, C]()) { case (_, nbrProcesses) => {
       // 1. Take active process instances from my neighbours
       val nbrProcs = includingSelf.unionHoodSet(nbrProcesses().keySet)
@@ -63,15 +66,15 @@ trait CustomSpawn {
           val p = ProcInstance(arg)(process)
           vm.newExportStack
           val result = p.run(args)
-          env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1)
+          env.put(Metrics.ACTIVE_PROCESSES, env.get[Double](Metrics.ACTIVE_PROCESSES) + 1)
           if(result.value.get._2) vm.mergeExport else vm.discardExport
           arg -> result
         }.collect { case(p,pi) if pi.value.get._2 => p -> pi.value.get._1 }.toMap
     } }
   }
 
-  def spawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
-    simpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
+  def sspawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
+    spawn[A,B,Option[C]]((p: A) => (a: B) => {
       val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
         val newFinished = status == Terminated | includingSelf.anyHood(nbr{finished})
@@ -97,7 +100,7 @@ trait CustomSpawn {
   }
   class SpawnContinuation[K,Args](val keys: Set[K], val args: Args){
     def spawn[R](proc: K => Args => (R,Status)): Map[K,R] =
-      compactSpawn(proc, keys, args)
+      csspawn(proc, keys, args)
   }
 
   /**********************************************
@@ -112,7 +115,8 @@ trait CustomSpawn {
     override def filter = status
   }
 
-  def compactSimpleSpawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
+  // "Compact" spawn
+  def cspawn[Key, Args, R](process: Key => Args => SpawnReturn[R], newProcesses: Set[Key], args: Args): Map[Key,R] =
     spreadKeys[Key,R](newProcesses){ key => env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1); process(key)(args) }
 
   def spreadKeys[K,R](newKeys: Set[K])(mapKey: K => MapFilter[R]): Map[K,R] =
@@ -158,8 +162,9 @@ trait CustomSpawn {
 
   def simplyReturn[T](expr: => T) = new IffContinuation[T](expr)
 
-  def compactSpawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
-    compactSimpleSpawn[A,B,Option[C]]((p: A) => (a: B) => {
+  // "Compact" "status" spawn
+  def csspawn[A, B, C](process: A => B => (C, Status), params: Set[A], args: B): Map[A,C] = {
+    cspawn[A,B,Option[C]]((p: A) => (a: B) => {
       val (finished, result, status) = rep((false, none[C], false)) { case (finished, _, _) => {
         val (result, status) = process(p)(a)
         val newFinished = status == Terminated | includingSelf.anyHood(nbr{finished})

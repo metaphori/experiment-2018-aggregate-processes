@@ -26,7 +26,7 @@ class MultiGradient extends AggregateProgram
     val sharedTimer = sharedTimerWithDecay(startEvery, delta)
     val impulse = captureChange(sharedTimer)
 
-    val procs = spawn[Int,Boolean,Double](
+    val procs = sspawn[Int,Boolean,Double](
       process = (_) => source => {
         val shutdownLimit = T(startEvery * numActiveProcs, delta)
         val outlimit = T(considerAfter, delta)
