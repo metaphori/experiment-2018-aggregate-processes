@@ -99,6 +99,8 @@ class Chat extends AggregateProgram
     env.put("source", source==mid)
     env.put("centre", centre==mid)
 
+    env.put(SIM_METRIC_N_PROCS_RUN, 0.0)
+
     chat(centre, if(chg) newTargets else Set[ID]())
   }
 
