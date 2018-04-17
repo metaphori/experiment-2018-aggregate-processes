@@ -1,6 +1,5 @@
-package it.unibo.alchemist.implementations.actions
+package it.unibo.alchemist.model.implementations.actions
 
-import it.unibo.alchemist.model.implementations.actions.AbstractConfigurableMoveNode
 import it.unibo.alchemist.model.implementations.movestrategies.routing.IgnoreStreets
 import it.unibo.alchemist.model.implementations.movestrategies.speed.ConstantSpeed
 import it.unibo.alchemist.model.interfaces._
@@ -17,24 +16,24 @@ class RandomRoundTrip[T](environment: Environment[T], node: Node[T],
                          maxX: Double, maxY: Double,
                          waypointCount: Int,
                          speed: Double) extends AbstractConfigurableMoveNode(
-  environment, node,
-  new IgnoreStreets,
-  new TargetSelectionStrategy {
-    private var stack = List[Position]()
-    private val base = environment.makePosition(baseX, baseY)
-    private def randomInRange(min: Double, max: Double) = rng.nextDouble() * (maxX - minX) - minX
-    private def randomPos() = environment.makePosition(randomInRange(minX, maxX), randomInRange(minY, maxY))
-    override def getTarget: Position = {
-      if (stack.isEmpty) {
-        stack = base :: (1 to waypointCount).map(_ => randomPos()).toList ::: base :: Nil
+    environment, node,
+    new IgnoreStreets,
+    new TargetSelectionStrategy {
+      private var stack = List[Position]()
+      private val base = environment.makePosition(baseX, baseY)
+      private def randomInRange(min: Double, max: Double) = rng.nextDouble() * (maxX - minX) - minX
+      private def randomPos() = environment.makePosition(randomInRange(minX, maxX), randomInRange(minY, maxY))
+      override def getTarget: Position = {
+        if (stack.isEmpty) {
+          stack = base :: (1 to waypointCount).map(_ => randomPos()).toList ::: base :: Nil
+        }
+        val result = stack.head
+        stack = stack.tail
+        result
       }
-      val result = stack.head
-      stack = stack.tail
-      result
-    }
-  },
-  new ConstantSpeed(reaction, speed)
-) {
+    },
+    new ConstantSpeed(reaction, speed)
+  ) {
   override def getDestination(source: Position, target: Position, maxWalk: Double): Position =
     if (source.getDistanceTo(target) <= maxWalk) target
     else {
