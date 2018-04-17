@@ -12,6 +12,9 @@ object Metrics {
   val TIME_TO_ARRIVE_NOSPAWN = "cumulative_time_nospawn"
   val ACTIVE_PROCESSES = "n_procs_run"
   val ACTIVE_MSGS = "n_active_msgs"
+  val ROUNDS_NOSPAWN = "n_rounds_nospawn"
+  val BANDWIDTH_SPAWN = "bandwidth_spawn"
+  val BANDWIDTH_NOSPAWN = "bandwidth_nospawn"
 }
 
 class Chat extends AggregateProgram
@@ -73,6 +76,7 @@ class Chat extends AggregateProgram
 
   def chatNoSpawn(centre: ID, source: ID, newTargets: Set[ID]) = {
     env.put(Metrics.ACTIVE_MSGS, 0.0)
+    env.put(Metrics.ROUNDS_NOSPAWN, env.get[Double](Metrics.ROUNDS_NOSPAWN) + 1)
     rep((Set[Msg](), Set[Msg]())) { case (mine, removedMsgs) =>
       env.put("removed_msgs", removedMsgs)
 
@@ -99,7 +103,12 @@ class Chat extends AggregateProgram
       val activeMsgs = diff -- toRemove ++ newMsgs
       env.put(Metrics.ACTIVE_MSGS, activeMsgs.size)
 
-      (activeMsgs, allRemovedMsgs ++ toRemove)
+      val newRemovedMsgs = allRemovedMsgs ++ toRemove
+
+      env.put(Metrics.BANDWIDTH_NOSPAWN, env.get[Double](Metrics.BANDWIDTH_NOSPAWN)
+        + excludingSelf.sumHood(1) * (activeMsgs.size + newRemovedMsgs.size))
+
+      (activeMsgs, newRemovedMsgs)
     }
   }
 
@@ -153,13 +162,13 @@ class Chat extends AggregateProgram
     rep(x){ old => x | includingSelf.anyHood(nbr{old}) }
 
   def distanceToWithParent(source: Boolean): (Double, ID) = {
-    rep((Double.PositiveInfinity, mid)){ case (dist, parent) =>
+    rep((Double.PositiveInfinity, -1)){ case (dist, parent) =>
       mux(source){
         (0.0, mid)
       }{
         excludingSelf.minHoodSelector(nbr{dist}+nbrRange()){
           (nbr{dist}+nbrRange(),nbr{mid})
-        }.getOrElse((Double.PositiveInfinity, mid))
+        }.getOrElse((Double.PositiveInfinity, -1))
       }
     }
   }

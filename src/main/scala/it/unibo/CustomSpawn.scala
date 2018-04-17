@@ -63,7 +63,10 @@ trait CustomSpawn {
       // 3. Collect all process instances to be executed, execute them and update their state
       (nbrProcs ++ newProcs)
         .map { case arg =>
-          val p = ProcInstance(arg)(process)
+          val p = ProcInstance(arg)(a => {
+            env.put(Metrics.BANDWIDTH_SPAWN, env.get[Double](Metrics.BANDWIDTH_SPAWN) + excludingSelf.sumHood(nbr(1)))
+            process(a)
+          })
           vm.newExportStack
           val result = p.run(args)
           env.put(Metrics.ACTIVE_PROCESSES, env.get[Double](Metrics.ACTIVE_PROCESSES) + 1)
@@ -169,12 +172,13 @@ trait CustomSpawn {
         val (result, status) = process(p)(a)
         val newFinished = status == Terminated | includingSelf.anyHood(nbr{finished})
         val terminated = includingSelf.everyHood(nbr{newFinished})
+        val nnbrs = excludingSelf.sumHood(nbr(1))
         val SpawnReturn(newResult, newStatus) = (result, status) match {
           case _ if terminated     => SpawnReturn(None, false)
           case (_,     External)   => SpawnReturn(None, false)
-          case (_,     Terminated) => SpawnReturn(None, true)
-          case (value, Output)     => SpawnReturn(Some(value), true)
-          case (_,     Bubble)     => SpawnReturn(None, true)
+          case (_,     Terminated) => env.put(Metrics.BANDWIDTH_SPAWN, env.get[Double](Metrics.BANDWIDTH_SPAWN) + nnbrs); SpawnReturn(None, true)
+          case (value, Output)     => env.put(Metrics.BANDWIDTH_SPAWN, env.get[Double](Metrics.BANDWIDTH_SPAWN) + nnbrs); SpawnReturn(Some(value), true)
+          case (_,     Bubble)     => env.put(Metrics.BANDWIDTH_SPAWN, env.get[Double](Metrics.BANDWIDTH_SPAWN) + nnbrs); SpawnReturn(None, true)
         }
         (newFinished, newResult, newStatus)
       } }

@@ -1,0 +1,13 @@
+### Running stuff
+
+By command-line:
+
+$ java -Xmx5024m
+  -cp "build/classes/main:build/resources/main:libs/scafi-lib-assembly-0.3.0.jar:libs/alchemist-redist-7.0.2.jar" \
+  it.unibo.alchemist.Alchemist   \
+  -b -var random \
+  -y src/main/yaml/it.unibo.chat.yml -e data/20180409_chat -t 1000 -p 3 -v &> exec.txt &
+
+where build/ is where Gradle puts compiled code;
+otherwise, you might provide as well "build/libs/experiment-spawn.jar".
+
