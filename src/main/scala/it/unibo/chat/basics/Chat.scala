@@ -89,8 +89,6 @@ class Chat extends AggregateProgram
     env.put("source", source==mid)
     env.put("centre", centre==mid)
 
-    env.put(SIM_METRIC_N_PROCS_RUN, 0.0)
-
     chat(centre, if(chg) newTargets else Set[ID]())
   }
 
@@ -113,33 +111,7 @@ class Chat extends AggregateProgram
     }
   }
 
-  def impulsesEvery[T : Numeric](d: T, dt: T): Boolean =
-    rep(false){ impulse =>
-      branch(impulse) { false } { T(d,dt)==0 }
-    }
-
   def captureChange[T](x: T) = rep((x,false)) { case (value, _) =>
     (x, value != x)
   }._2
-
-  override def sharedTimerWithDecay[T](period: T, dt: T)(implicit ev: Numeric[T]): T =
-    rep(ev.zero) { clock =>
-      val clockPerceived = foldhood(clock)(ev.max)(nbr(clock))
-      branch (ev.compare(clockPerceived, clock) <= 0) {
-        // I'm currently as fast as the fastest device in the neighborhood, so keep on counting time
-        ev.plus(clock, (branch(cyclicTimerWithDecay(period, dt)) { ev.one }  { ev.zero }))
-      } {
-        // Someone else's faster, take his time, and restart counting
-        clockPerceived
-      }
-    }
-
-  override def cyclicTimerWithDecay[T](length: T, decay: T)(implicit ev: Numeric[T]): Boolean =
-    rep(length){ left =>
-      branch (left == ev.zero) {
-        length
-      } {
-        T(length, decay)
-      }
-    } == length
 }

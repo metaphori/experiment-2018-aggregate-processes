@@ -9,17 +9,9 @@ variables:
     max: 10
     step: 1
     default: 1.5
-  batchFreq: &batchFreq
-    formula: 10
               
 export:
   - time
-  - molecule: exp
-    aggregators: [mean]
-    value-filter: ONLYFINITE
-  - molecule: roundExecTime
-    aggregators: [mean]
-    value-filter: ONLYFINITE
 
 seeds:
   scenario: *random
@@ -34,34 +26,19 @@ incarnation: scafi
 pools:
   - pool: &program
     - time-distribution:
-        type: RandomWeibullTime
+        type: ExponentialTime
         parameters: [1, 0.5, 0.5]
       type: Event
       actions:
         - type: RunScafiProgram
-          parameters: [it.unibo.chat.basics.Chat, 20]
+          parameters: [it.unibo.replicated.Gossip, 20]
   - pool: &contents
-    - molecule: source
-      concentration: 0 # false
     - molecule: commRadius
       concentration: *commRadius
-    - molecule: batchFreq
-      concentration: *batchFreq
     - molecule: n_procs_run
       concentration: 0.0
     - molecule: bandwidth_spawn
       concentration: 0.0
-#  - pool: &turnIntoSource
-#    - time-distribution:
-#        type: Trigger
-#        parameters: [*turnIntoSourceAt]
-#      type: Event
-#      actions:
-#        - type: SetLocalMoleculeConcentration
-#          parameters: [source, 1]
-#  - pool: &contents
-#    - molecule: source
-#      concentration: 0 # false
 
 positions:
   type: Continuous2DEuclidean
