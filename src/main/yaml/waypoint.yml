@@ -1,0 +1,39 @@
+variables:
+  random: &random
+    min: 0
+    max: 5
+    step: 1
+    default: 0
+  commRadius: &commRadius
+    min: 2.0
+    max: 10
+    step: 1
+    default: 1.5
+
+seeds:
+  scenario: *random
+  simulation: *random
+
+network-model:
+  type: EuclideanDistance
+  parameters: [*commRadius]
+
+incarnation: scafi
+
+pools:
+  - pool: &move
+    - time-distribution: 1
+      type: Event
+      actions:
+        - type: RandomRoundTrip
+          parameters: [0, 0, 10, 10, 30, 30, 1, 1]
+
+positions:
+  type: Continuous2DEuclidean
+
+displacements:
+  - in:
+      type: Grid
+      parameters: [0, 0, 20, 20, 1, 1, 0.8, 0.8]
+    programs:
+      - *move
