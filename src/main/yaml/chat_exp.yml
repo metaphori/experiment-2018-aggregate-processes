@@ -33,6 +33,9 @@ export:
     value-filter: ONLYFINITE
   - molecule: cumulative_time_spawn
     aggregators: [sum]
+  - molecule: bandwidth_spawn
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
     value-filter: ONLYFINITE
   - molecule: n_active_msgs
     aggregators: [sum,mean]
@@ -45,6 +48,12 @@ export:
     value-filter: ONLYFINITE
   - molecule: cumulative_time_nospawn
     aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: n_rounds_nospawn
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: bandwidth_nospawn
+    aggregators: [sum,mean]
     value-filter: ONLYFINITE
 
 seeds:
@@ -81,11 +90,17 @@ pools:
       concentration: 0.0
     - molecule: cumulative_time_spawn
       concentration: 0.0
+    - molecule: bandwidth_spawn
+      concentration: 0.0
     - molecule: msg_sent_nospawn
       concentration: 0.0
     - molecule: msg_received_nospawn
       concentration: 0.0
     - molecule: cumulative_time_nospawn
+      concentration: 0.0
+    - molecule: n_rounds_nospawn
+      concentration: 0.0
+    - molecule: bandwidth_nospawn
       concentration: 0.0
     - molecule: prob_send
       concentration: *prob_send

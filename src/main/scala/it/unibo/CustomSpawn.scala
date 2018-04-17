@@ -63,7 +63,10 @@ trait CustomSpawn {
       // 3. Collect all process instances to be executed, execute them and update their state
       (nbrProcs ++ newProcs)
         .map { case arg =>
-          val p = ProcInstance(arg)(process)
+          val p = ProcInstance(arg)(a => {
+            env.put(Metrics.BANDWIDTH_SPAWN, env.get[Double](Metrics.BANDWIDTH_SPAWN) + excludingSelf.sumHood(1))
+            process(a)
+          })
           vm.newExportStack
           val result = p.run(args)
           env.put(Metrics.ACTIVE_PROCESSES, env.get[Double](Metrics.ACTIVE_PROCESSES) + 1)
