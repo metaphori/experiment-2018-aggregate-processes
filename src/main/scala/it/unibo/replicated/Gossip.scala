@@ -1,0 +1,92 @@
+package it.unibo.replicated
+
+import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
+
+
+object Metrics {
+}
+
+class Gossip extends AggregateProgram
+  with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn
+  with BlockT with BlockG with BlockC with BlockS {
+  override type MainResult = Any
+
+  import Builtins.Bounded
+
+  def gossipNaive[T:Bounded](value: T) = {
+    maxHood(value)
+  }
+
+  def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
+    val leader = S(grain = Double.PositiveInfinity, metric = nbrRange)
+    env.put("leader", leader)
+    broadcast(leader, C[Double,T](
+      potential = distanceTo(leader),
+      acc = ev.max(_,_),
+      local = value,
+      Null = ev.bottom))
+  }
+
+  def gossipReplicated[T](value: T, p: Double, k: Int)(implicit ev: Bounded[T]) = {
+    val clock = sharedTimerWithDecay[Double](p, dt(whenNan = 0)).toLong
+    val isNewClock = captureChange(clock)
+    val newProcs = if(isNewClock) Set(clock) else Set[Long]()
+    val replicates = sspawn[Long,Unit,T]((pid: Long) => (_) => {
+      import Status._
+      (gossipNaive[T](value), if(clock - pid < k){ Output } else { External })
+    }, newProcs, ())
+
+    env.put("clock", clock)
+    env.put("dt", dt(whenNan = 0))
+    env.put("replicates", replicates)
+
+    (replicates.values ++ Seq[T](ev.bottom)).min((x: T, y: T) => implicitly[Bounded[T]].compare(x, y))
+  }
+
+  def gossipOracle(): Double = nextRandom*200 // TODO: implement oracle
+
+  def sensedValue: Double = nextRandom*200 //env.get("")
+
+  override def main = {
+    env.put("cycltimr", cyclicTimerWithDecay(10,dt(whenNan = 0)))
+    gossipNaive(sensedValue)
+    gossipGC(sensedValue)
+    gossipReplicated(sensedValue, p = 5, k = 3)
+    gossipOracle()
+  }
+
+  /************ FUNCTIONS *************/
+
+  def impulsesEvery[T : Numeric](d: T, dt: T): Boolean =
+    rep(false){ impulse =>
+      branch(impulse) { false } { T(d,dt)==0 }
+    }
+
+  def captureChange[T](x: T) = rep((x,false)) { case (value, _) =>
+    (x, value != x)
+  }._2
+
+  override def sharedTimerWithDecay[T](period: T, dt: T)(implicit ev: Numeric[T]): T =
+    rep(ev.zero) { clock =>
+      val clockPerceived = foldhood(clock)(ev.max)(nbr(clock))
+      branch (ev.compare(clockPerceived, clock) <= 0) {
+        // I'm currently as fast as the fastest device in the neighborhood, so keep on counting time
+        ev.plus(clock, (branch(cyclicTimerWithDecay(period, dt)) { ev.one }  { ev.zero }))
+      } {
+        // Someone else's faster, take his time, and restart counting
+        clockPerceived
+      }
+    }
+
+  override def cyclicTimerWithDecay[T](length: T, decay: T)(implicit ev: Numeric[T]): Boolean = {
+    val x = rep(length){ left =>
+      branch (left == ev.zero) {
+        length
+      } {
+        T(length, decay)
+      }
+    }
+    env.put("x", x)
+  x == length}
+}
