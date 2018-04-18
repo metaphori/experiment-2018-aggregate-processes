@@ -39,6 +39,8 @@ pools:
       concentration: 0.0
     - molecule: bandwidth_spawn
       concentration: 0.0
+    - molecule: sensor
+      concentration: 77.7
 
 positions:
   type: Continuous2DEuclidean

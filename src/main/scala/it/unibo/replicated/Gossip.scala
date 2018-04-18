@@ -1,5 +1,9 @@
 package it.unibo.replicated
 
+import java.util.Comparator
+
+import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
+import it.unibo.alchemist.model.interfaces.Node
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
@@ -34,26 +38,37 @@ class Gossip extends AggregateProgram
     val newProcs = if(isNewClock) Set(clock) else Set[Long]()
     val replicates = sspawn[Long,Unit,T]((pid: Long) => (_) => {
       import Status._
-      (gossipNaive[T](value), if(clock - pid < k){ Output } else { External })
+      (gossipGC[T](value), if(clock - pid < k){ Output } else { External })
     }, newProcs, ())
 
     env.put("clock", clock)
     env.put("dt", dt(whenNan = 0))
     env.put("replicates", replicates)
 
-    (replicates.values ++ Seq[T](ev.bottom)).min((x: T, y: T) => implicitly[Bounded[T]].compare(x, y))
+    (replicates ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
   }
 
-  def gossipOracle(): Double = nextRandom*200 // TODO: implement oracle
+  val f: java.util.function.Function[_>:Node[Any],_<:Double] = _.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double]
+  def gossipOracle(): Double = environment.getNodes.stream().map[Double](f)
+    .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
 
-  def sensedValue: Double = nextRandom*200 //env.get("")
+  def senseValue = scala.util.Random.nextDouble()*200
+  var sensedValue: Double = _
 
   override def main = {
+    sensedValue = senseValue
+    env.put[Double]("sensor", sensedValue)
+
     env.put("cycltimr", cyclicTimerWithDecay(10,dt(whenNan = 0)))
-    gossipNaive(sensedValue)
-    gossipGC(sensedValue)
-    gossipReplicated(sensedValue, p = 5, k = 3)
-    gossipOracle()
+    val gnaive = gossipNaive(sensedValue)
+    val ggc = gossipGC(sensedValue)
+    val grep = gossipReplicated(sensedValue, p = 5, k = 3)
+    val gopt = gossipOracle()
+    env.put("gossip_naive", gnaive)
+    env.put("gossip_GC", ggc)
+    env.put("gossip_repl", grep)
+    env.put("gossip_opt", gopt)
+    grep
   }
 
   /************ FUNCTIONS *************/
