@@ -1,7 +1,7 @@
 variables:
   random: &random
     min: 0
-    max: 5
+    max: 2
     step: 1
     default: 0
   commRadius: &commRadius
@@ -12,6 +12,15 @@ variables:
               
 export:
   - time
+  - molecule: gossip_naive
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_gc
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_repl
+    aggregators: [mean]
+    value-filter: ONLYFINITE
 
 seeds:
   scenario: *random

@@ -19,7 +19,9 @@ class Gossip extends AggregateProgram
   import Builtins.Bounded
 
   def gossipNaive[T:Bounded](value: T) = {
-    maxHood(value)
+    rep(value)( max =>
+      maxHood(nbr(max))
+    )
   }
 
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
@@ -33,20 +35,27 @@ class Gossip extends AggregateProgram
   }
 
   def gossipReplicated[T](value: T, p: Double, k: Int)(implicit ev: Bounded[T]) = {
+    (replicated{
+      gossipGC[T](value)
+    }(p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
+  }
+
+  def replicated[T](proc: => T)(p: Double, k: Int)(implicit ev: Bounded[T]) = {
     val clock = sharedTimerWithDecay[Double](p, dt(whenNan = 0)).toLong
     val isNewClock = captureChange(clock)
     val newProcs = if(isNewClock) Set(clock) else Set[Long]()
     val replicates = sspawn[Long,Unit,T]((pid: Long) => (_) => {
       import Status._
-      (gossipGC[T](value), if(clock - pid < k){ Output } else { External })
+      (proc, if(clock - pid < k){ Output } else { External })
     }, newProcs, ())
 
     env.put("clock", clock)
     env.put("dt", dt(whenNan = 0))
     env.put("replicates", replicates)
 
-    (replicates ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
+    replicates
   }
+
 
   val f: java.util.function.Function[_>:Node[Any],_<:Double] = _.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double]
   def gossipOracle(): Double = environment.getNodes.stream().map[Double](f)
@@ -62,11 +71,11 @@ class Gossip extends AggregateProgram
     env.put("cycltimr", cyclicTimerWithDecay(10,dt(whenNan = 0)))
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)
-    val grep = gossipReplicated(sensedValue, p = 5, k = 3)
+    val grep = gossipReplicated(sensedValue, p = 30, k = 5)
     val gopt = gossipOracle()
-    env.put("gossip_naive", gnaive)
-    env.put("gossip_GC", ggc)
-    env.put("gossip_repl", grep)
+    env.put("gossip_naive", Math.pow(gopt-gnaive,2))
+    env.put("gossip_gc", Math.pow(gopt-ggc,2))
+    env.put("gossip_repl", Math.pow(gopt-grep,2))
     env.put("gossip_opt", gopt)
     grep
   }
