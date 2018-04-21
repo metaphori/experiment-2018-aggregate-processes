@@ -87,8 +87,8 @@ class Gossip extends AggregateProgram
       branch(impulse) { false } { T(d,dt)==0 }
     }
 
-  def captureChange[T](x: T) = rep((x,false)) { case (value, _) =>
-    (x, value != x)
+  def captureChange[T](x: T, initially: Boolean = true) = rep((Option.empty[T],false)) { case (value, _) =>
+    (Some(x), value.map(_ != x).getOrElse(initially))
   }._2
 
   override def sharedTimerWithDecay[T](period: T, dt: T)(implicit ev: Numeric[T]): T =
