@@ -16,7 +16,10 @@ class Gossip extends AggregateProgram
   override type MainResult = Any
 
   // FIX ISSUE IN SCAFI STDLIB
-  override def randomUid: (Double, ID) = rep((env.get[Double]("thisRoundRandom")), mid()) { v => (v._1, mid()) }
+  override def randomUid: (Double, ID) = rep((thisRoundRandom), mid()) { v => (v._1, mid()) }
+  def thisRoundRandom: Double = try {
+    env.get[Double]("thisRoundRandom")
+  } catch { case _ => env.put[Double]("thisRoundRandom",nextRandom); env.get[Double]("thisRoundRandom") }
 
   import Builtins.Bounded
 
@@ -69,7 +72,6 @@ class Gossip extends AggregateProgram
   override def main = {
     sensedValue = senseValue
     env.put[Double]("sensor", sensedValue)
-    env.put[Double]("thisRoundRandom", nextRandom)
 
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)

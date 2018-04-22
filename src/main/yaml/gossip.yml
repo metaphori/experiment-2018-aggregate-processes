@@ -18,9 +18,6 @@ export:
   - molecule: gossip_gc
     aggregators: [mean]
     value-filter: ONLYFINITE
-  - molecule: gossip_gc2
-    aggregators: [mean]
-    value-filter: ONLYFINITE
   - molecule: gossip_repl
     aggregators: [mean]
     value-filter: ONLYFINITE
