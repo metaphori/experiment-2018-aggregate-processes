@@ -36,20 +36,20 @@ class Gossip extends AggregateProgram
 
   def gossipReplicated[T](value: T, p: Double, k: Int)(implicit ev: Bounded[T]) = {
     (replicated{
-      gossipGC[T](value)
-    }(p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
+      gossipGC[T]
+    }(value,p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
   }
 
-  def replicated[T](proc: => T)(p: Double, k: Int)(implicit ev: Bounded[T]) = {
-    val clock = sharedTimerWithDecay[Double](p, dt(whenNan = 0)).toLong
-    val isNewClock = captureChange(clock)
-    val newProcs = if(isNewClock) Set(clock) else Set[Long]()
-    val replicates = sspawn[Long,Unit,T]((pid: Long) => (_) => {
-      import Status._
-      (proc, if(clock - pid < k){ Output } else { External })
-    }, newProcs, ())
+  import Status._
 
-    env.put("clock", clock)
+  def replicated[T,R](proc: T => R)(argument: T, period: Double, numReplicates: Int) = {
+    val lastPid = sharedTimerWithDecay[Double](period, dt(whenNan = 0)).toLong
+    val newProcs = if(captureChange(lastPid)) Set(lastPid) else Set[Long]()
+    val replicates = sspawn[Long,T,R]((pid: Long) => (arg) => {
+      (proc(arg), if(lastPid - pid < numReplicates){ Output } else { External })
+    }, newProcs, argument)
+
+    env.put("clock", lastPid)
     env.put("dt", dt(whenNan = 0))
     env.put("replicates", replicates)
 
@@ -68,7 +68,6 @@ class Gossip extends AggregateProgram
     sensedValue = senseValue
     env.put[Double]("sensor", sensedValue)
 
-    env.put("cycltimr", cyclicTimerWithDecay(10,dt(whenNan = 0)))
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)
     val grep = gossipReplicated(sensedValue, p = 30, k = 5)
