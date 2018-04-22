@@ -7,3 +7,6 @@ data/raw/
 classes/
 .idea/workspace.xml
 exec.txt
+
+.idea/**/gradle.xml
+.idea/**/libraries
