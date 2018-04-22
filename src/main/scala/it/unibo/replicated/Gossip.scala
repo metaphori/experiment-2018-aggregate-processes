@@ -7,7 +7,6 @@ import it.unibo.alchemist.model.interfaces.Node
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
-
 object Metrics {
 }
 
@@ -15,6 +14,9 @@ class Gossip extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn
   with BlockT with BlockG with BlockC with BlockS {
   override type MainResult = Any
+
+  // FIX ISSUE IN SCAFI STDLIB
+  override def randomUid: (Double, ID) = rep((env.get[Double]("thisRoundRandom")), mid()) { v => (v._1, mid()) }
 
   import Builtins.Bounded
 
@@ -56,17 +58,18 @@ class Gossip extends AggregateProgram
     replicates
   }
 
-
   val f: java.util.function.Function[_>:Node[Any],_<:Double] = _.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double]
   def gossipOracle(): Double = environment.getNodes.stream().map[Double](f)
     .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
 
-  def senseValue = scala.util.Random.nextDouble()*200
+  def maxVal = env.get[Double]("maxsense")
+  def senseValue = scala.util.Random.nextDouble()*maxVal
   var sensedValue: Double = _
 
   override def main = {
     sensedValue = senseValue
     env.put[Double]("sensor", sensedValue)
+    env.put[Double]("thisRoundRandom", nextRandom)
 
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)

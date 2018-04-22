@@ -18,6 +18,9 @@ export:
   - molecule: gossip_gc
     aggregators: [mean]
     value-filter: ONLYFINITE
+  - molecule: gossip_gc2
+    aggregators: [mean]
+    value-filter: ONLYFINITE
   - molecule: gossip_repl
     aggregators: [mean]
     value-filter: ONLYFINITE
@@ -50,6 +53,16 @@ pools:
       concentration: 0.0
     - molecule: sensor
       concentration: 77.7
+    - molecule: maxsense
+      concentration: 200.0
+  - pool: &changeMaxValue
+    - time-distribution:
+        type: Trigger
+        parameters: [100]
+      type: Event
+      actions:
+        - type: SetLocalMoleculeConcentration
+          parameters: [maxsense, 100.0]
 
 positions:
   type: Continuous2DEuclidean
@@ -60,4 +73,5 @@ displacements:
       parameters: [0, 0, 20, 20, 1, 1, 0.8, 0.8]
     programs: 
       - *program
+      - *changeMaxValue
     contents: *contents
