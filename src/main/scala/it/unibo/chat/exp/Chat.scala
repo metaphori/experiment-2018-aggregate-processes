@@ -18,12 +18,16 @@ object Metrics {
 }
 
 class Chat extends AggregateProgram
-  with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
+  with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC with BlockS {
   override type MainResult = Any
 
   import it.unibo.Spawn._
 
-  val centre = 189
+  // FIX ISSUE IN SCAFI STDLIB
+  override def randomUid: (Double, ID) = rep((thisRoundRandom), mid()) { v => (v._1, mid()) }
+  def thisRoundRandom: Double = try {
+    env.get[Double]("thisRoundRandom")
+  } catch { case _ => env.put[Double]("thisRoundRandom",nextRandom); env.get[Double]("thisRoundRandom") }
 
   def delta: Int = dt(whenNan = 0).toInt
 
@@ -128,6 +132,9 @@ class Chat extends AggregateProgram
       env.put(Metrics.MSGS_SENT_NOSPAWN, env.get[Double](Metrics.MSGS_SENT_NOSPAWN)+1)
       newTargets += Math.round(nextRandom * SIM_PARAM_N_DEVICES).toInt
     }
+
+    val electedCentre = S(Double.PositiveInfinity, nbrRange)
+    val centre = broadcast(electedCentre, mid)
 
     env.put("centre", centre==mid)
     env.put(Metrics.ACTIVE_PROCESSES, 0.0)
