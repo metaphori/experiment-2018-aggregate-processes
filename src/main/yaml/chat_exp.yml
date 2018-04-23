@@ -122,8 +122,10 @@ positions:
   
 displacements:
   - in:
-      type: Grid 
-      parameters: [0, 0, *nrows, *ncols, 1, 1, 0.8, 0.8]
+      type: Rectangle
+      parameters: [*ndevices, 0, 0, *nrows, *ncols]
+#      type: Grid
+#      parameters: [0, 0, *nrows, *ncols, 1, 1, 0.8, 0.8]
     programs: 
       - *program
     contents: *contents
