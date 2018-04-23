@@ -36,7 +36,6 @@ export:
   - molecule: bandwidth_spawn
     aggregators: [sum,mean]
     value-filter: ONLYFINITE
-    value-filter: ONLYFINITE
   - molecule: n_active_msgs
     aggregators: [sum,mean]
     value-filter: ONLYFINITE
