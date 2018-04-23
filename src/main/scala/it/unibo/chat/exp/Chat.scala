@@ -133,8 +133,9 @@ class Chat extends AggregateProgram
       newTargets += Math.round(nextRandom * SIM_PARAM_N_DEVICES).toInt
     }
 
-    val electedCentre = S(Double.PositiveInfinity, nbrRange)
-    val centre = broadcast(electedCentre, mid)
+//    val electedCentre = S(Double.PositiveInfinity, nbrRange)
+//    val centre = broadcast(electedCentre, mid)
+    val centre = 0
 
     env.put("centre", centre==mid)
     env.put(Metrics.ACTIVE_PROCESSES, 0.0)
