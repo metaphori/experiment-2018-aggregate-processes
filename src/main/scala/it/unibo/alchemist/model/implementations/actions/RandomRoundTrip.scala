@@ -31,7 +31,7 @@ class RandomRoundTrip[T](environment: Environment[T], node: Node[T],
       case _ => throw new IllegalStateException(s"Either the start ($start) or the end ($end) must match with the base ($base)")
     },
     new TargetSelectionStrategy {
-      var currentTarget = base
+      var currentTarget: Position = base
       override def getTarget: Position = {
         currentTarget = environment.getPosition(node) match {
           case `base` => RandomPosition(environment, rng, minX, minY, maxX, maxY)
@@ -59,6 +59,7 @@ class RandomRoundTrip[T](environment: Environment[T], node: Node[T],
       environment.makePosition(maxWalk * cos(angle), maxWalk * sin(angle))
     }
 
-  override def cloneAction(node: Node[T], reaction: Reaction[T]): Action[T] = ???
+  override def cloneAction(node: Node[T], reaction: Reaction[T]): Action[T] =
+    ???
 
 }
