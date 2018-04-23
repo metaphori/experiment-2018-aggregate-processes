@@ -1,0 +1,133 @@
+environment:
+  type: OSMEnvironment
+  parameters: ["cesena.pbf"]
+
+parameters:
+  startX: &startX 12.237
+  endX: &endX 12.262
+  startY: &startY 44.1323
+  endY: &endY 44.1459
+
+variables:
+  random: &random
+    min: 0
+    max: 1
+    step: 1
+    default: 0
+  commRadius: &commRadius
+    formula: 100
+  ndevices: &ndevices
+    formula: 1000
+  prob_send: &prob_send
+    formula: "1.0/$ndevices"
+  stop_send_time: &stop_send_time
+    formula: 250
+  gridHeight: &gridHeight
+    formula: 44.1459 - 44.1323
+  gridWidth: &gridWidth
+    formula: 12.262 - 12.237
+              
+export:
+  - time
+  - molecule: n_procs_run
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: msg_sent_spawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: msg_received_spawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: cumulative_time_spawn
+    aggregators: [sum]
+  - molecule: bandwidth_spawn
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: n_active_msgs
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: msg_sent_nospawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: msg_received_nospawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: cumulative_time_nospawn
+    aggregators: [sum]
+    value-filter: ONLYFINITE
+  - molecule: n_rounds_nospawn
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+  - molecule: bandwidth_nospawn
+    aggregators: [sum,mean]
+    value-filter: ONLYFINITE
+
+seeds:
+  scenario: *random
+  simulation: *random
+
+network-model:
+  type: EuclideanDistance
+  parameters: [*commRadius]
+  
+incarnation: scafi
+
+pools:
+  - pool: &program
+    - time-distribution:
+#        type: ExponentialTime
+#        parameters: [1, 0.5]
+        type: RandomWeibullTime
+        parameters: [1, 0.2, 0.2]
+      type: Event
+      actions:
+        - type: RunScafiProgram
+          parameters: [it.unibo.chat.exp.Chat, 3.0]
+  - pool: &contents
+    - molecule: source
+      concentration: 0 # false
+    - molecule: commRadius
+      concentration: *commRadius
+    - molecule: ndevices
+      concentration: *ndevices
+    - molecule: msg_sent_spawn
+      concentration: 0.0
+    - molecule: msg_received_spawn
+      concentration: 0.0
+    - molecule: cumulative_time_spawn
+      concentration: 0.0
+    - molecule: bandwidth_spawn
+      concentration: 0.0
+    - molecule: msg_sent_nospawn
+      concentration: 0.0
+    - molecule: msg_received_nospawn
+      concentration: 0.0
+    - molecule: cumulative_time_nospawn
+      concentration: 0.0
+    - molecule: n_rounds_nospawn
+      concentration: 0.0
+    - molecule: bandwidth_nospawn
+      concentration: 0.0
+    - molecule: prob_send
+      concentration: *prob_send
+    - molecule: stop_send_time
+      concentration: *stop_send_time
+#  - pool: &turnIntoSource
+#    - time-distribution:
+#        type: Trigger
+#        parameters: [*turnIntoSourceAt]
+#      type: Event
+#      actions:
+#        - type: SetLocalMoleculeConcentration
+#          parameters: [source, 1]
+#  - pool: &contents
+#    - molecule: source
+#      concentration: 0 # false
+  
+displacements:
+  - in:
+      type: Rectangle
+      parameters: [*ndevices, *startY, *startX, *gridHeight, *gridWidth]
+    programs:
+      - *program
+    contents: *contents
