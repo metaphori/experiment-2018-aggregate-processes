@@ -1,0 +1,48 @@
+variables:
+  random: &random
+    min: 0
+    max: 2
+    step: 1
+    default: 0
+  commRadius: &commRadius
+    min: 2.0
+    max: 10
+    step: 1
+    default: 1.5
+              
+export:
+  - time
+
+seeds:
+  scenario: *random
+  simulation: *random
+
+network-model:
+  type: EuclideanDistance
+  parameters: [*commRadius]
+  
+incarnation: scafi
+
+pools:
+  - pool: &program
+    - time-distribution:
+        type: ExponentialTime
+        parameters: [1, 0.5, 0.5]
+      type: Event
+      actions:
+        - type: RunScafiProgram
+          parameters: [it.unibo.plib.PLib, 20]
+  - pool: &contents
+    - molecule: commRadius
+      concentration: *commRadius
+
+positions:
+  type: Continuous2DEuclidean
+  
+displacements:
+  - in:
+      type: Grid 
+      parameters: [0, 0, 5, 5, 1, 1, 0.8, 0.8]
+    programs: 
+      - *program
+    contents: *contents
