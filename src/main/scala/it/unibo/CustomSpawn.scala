@@ -3,24 +3,30 @@ package it.unibo
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.chat.exp.Metrics
 
-trait CustomSpawn {
-  self: AggregateProgram with ScafiAlchemistSupport with FieldUtils =>
+trait Spawn{
+  def spawn[A, B, C](process: A => B => (C, Boolean), params: Set[A], args: B): Map[A,C]
+}
 
-  val SIM_METRIC_N_PROCS_RUN = "n_procs_run"
-
+object Spawn {
   trait Status
-  object Status {
-    val External: Status = ExternalStatus
-    val Bubble: Status = BubbleStatus
-    val Output: Status = OutputStatus
-    val Terminated: Status = TerminatedStatus
-  }
-  import Status._
 
   case object ExternalStatus extends Status   // External to the bubble
   case object BubbleStatus extends Status     // Within the bubble
   case object OutputStatus extends Status     // Within the bubble and bubble output producer
   case object TerminatedStatus extends Status // Notifies the willingness to terminate the bubble
+
+  val External: Status = ExternalStatus
+  val Bubble: Status = BubbleStatus
+  val Output: Status = OutputStatus
+  val Terminated: Status = TerminatedStatus
+}
+
+trait CustomSpawn extends Spawn {
+  self: AggregateProgram with ScafiAlchemistSupport with FieldUtils =>
+
+  import Spawn._
+
+  val SIM_METRIC_N_PROCS_RUN = "n_procs_run"
 
   case class ProcInstance[A, B, C](params: A)(val proc: A => B => C, val value: Option[C] = None)
   {

@@ -1,8 +1,11 @@
 package it.unibo.replicated
 
+import java.util.Comparator
+
+import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
+import it.unibo.alchemist.model.interfaces.Node
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
-
 
 object Metrics {
 }
@@ -12,10 +15,18 @@ class Gossip extends AggregateProgram
   with BlockT with BlockG with BlockC with BlockS {
   override type MainResult = Any
 
+  // FIX ISSUE IN SCAFI STDLIB
+  override def randomUid: (Double, ID) = rep((thisRoundRandom), mid()) { v => (v._1, mid()) }
+  def thisRoundRandom: Double = try {
+    env.get[Double]("thisRoundRandom")
+  } catch { case _ => env.put[Double]("thisRoundRandom",nextRandom); env.get[Double]("thisRoundRandom") }
+
   import Builtins.Bounded
 
   def gossipNaive[T:Bounded](value: T) = {
-    maxHood(value)
+    rep(value)( max =>
+      maxHood(nbr(max))
+    )
   }
 
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
@@ -29,31 +40,48 @@ class Gossip extends AggregateProgram
   }
 
   def gossipReplicated[T](value: T, p: Double, k: Int)(implicit ev: Bounded[T]) = {
-    val clock = sharedTimerWithDecay[Double](p, dt(whenNan = 0)).toLong
-    val isNewClock = captureChange(clock)
-    val newProcs = if(isNewClock) Set(clock) else Set[Long]()
-    val replicates = sspawn[Long,Unit,T]((pid: Long) => (_) => {
-      import Status._
-      (gossipNaive[T](value), if(clock - pid < k){ Output } else { External })
-    }, newProcs, ())
+    (replicated{
+      gossipGC[T]
+    }(value,p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
+  }
 
-    env.put("clock", clock)
+  import it.unibo.Spawn._
+
+  def replicated[T,R](proc: T => R)(argument: T, period: Double, numReplicates: Int) = {
+    val lastPid = sharedTimerWithDecay[Double](period, dt(whenNan = 0)).toLong
+    val newProcs = if(captureChange(lastPid)) Set(lastPid) else Set[Long]()
+    val replicates = sspawn[Long,T,R]((pid: Long) => (arg) => {
+      (proc(arg), if(lastPid - pid < numReplicates){ Output } else { External })
+    }, newProcs, argument)
+
+    env.put("clock", lastPid)
     env.put("dt", dt(whenNan = 0))
     env.put("replicates", replicates)
 
-    (replicates.values ++ Seq[T](ev.bottom)).min((x: T, y: T) => implicitly[Bounded[T]].compare(x, y))
+    replicates
   }
 
-  def gossipOracle(): Double = nextRandom*200 // TODO: implement oracle
+  val f: java.util.function.Function[_>:Node[Any],_<:Double] = _.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double]
+  def gossipOracle(): Double = environment.getNodes.stream().map[Double](f)
+    .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
 
-  def sensedValue: Double = nextRandom*200 //env.get("")
+  def maxVal = env.get[Double]("maxsense")
+  def senseValue = nextRandom*maxVal
+  var sensedValue: Double = _
 
   override def main = {
-    env.put("cycltimr", cyclicTimerWithDecay(10,dt(whenNan = 0)))
-    gossipNaive(sensedValue)
-    gossipGC(sensedValue)
-    gossipReplicated(sensedValue, p = 5, k = 3)
-    gossipOracle()
+    sensedValue = senseValue
+    env.put[Double]("sensor", sensedValue)
+
+    val gnaive = gossipNaive(sensedValue)
+    val ggc = gossipGC(sensedValue)
+    val grep = gossipReplicated(sensedValue, p = 30, k = 5)
+    val gopt = gossipOracle()
+    env.put("gossip_naive", Math.pow(gopt-gnaive,2))
+    env.put("gossip_gc", Math.pow(gopt-ggc,2))
+    env.put("gossip_repl", Math.pow(gopt-grep,2))
+    env.put("gossip_opt", gopt)
+    grep
   }
 
   /************ FUNCTIONS *************/
@@ -63,30 +91,7 @@ class Gossip extends AggregateProgram
       branch(impulse) { false } { T(d,dt)==0 }
     }
 
-  def captureChange[T](x: T) = rep((x,false)) { case (value, _) =>
-    (x, value != x)
+  def captureChange[T](x: T, initially: Boolean = true) = rep((Option.empty[T],false)) { case (value, _) =>
+    (Some(x), value.map(_ != x).getOrElse(initially))
   }._2
-
-  override def sharedTimerWithDecay[T](period: T, dt: T)(implicit ev: Numeric[T]): T =
-    rep(ev.zero) { clock =>
-      val clockPerceived = foldhood(clock)(ev.max)(nbr(clock))
-      branch (ev.compare(clockPerceived, clock) <= 0) {
-        // I'm currently as fast as the fastest device in the neighborhood, so keep on counting time
-        ev.plus(clock, (branch(cyclicTimerWithDecay(period, dt)) { ev.one }  { ev.zero }))
-      } {
-        // Someone else's faster, take his time, and restart counting
-        clockPerceived
-      }
-    }
-
-  override def cyclicTimerWithDecay[T](length: T, decay: T)(implicit ev: Numeric[T]): Boolean = {
-    val x = rep(length){ left =>
-      branch (left == ev.zero) {
-        length
-      } {
-        T(length, decay)
-      }
-    }
-    env.put("x", x)
-  x == length}
 }

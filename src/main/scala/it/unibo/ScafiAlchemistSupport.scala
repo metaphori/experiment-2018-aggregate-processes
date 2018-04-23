@@ -4,6 +4,7 @@ import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.alchemist.implementation.nodes.NodeManager
 import it.unibo.alchemist.model.interfaces.Time
 import it.unibo.scafi.PlatformDependentConstants
+import it.unibo.alchemist.model.interfaces.Environment
 
 /*
  * Copyright (C) 2016-2017, Roberto Casadei, Mirko Viroli, and contributors.
@@ -31,6 +32,7 @@ trait ScafiAlchemistSupport { self: AggregateProgram with StandardSensors =>
     if(dt.isNaN) whenNan else dt
   }
   def nextRandom: Double = sense[()=>java.lang.Double]("random")().toDouble
+  def environment = sense[Environment[Any]]("env")
 
   import sun.reflect.Reflection.getCallerClass
   override def aggregate[T](f: => T): T =

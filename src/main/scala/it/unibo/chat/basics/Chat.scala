@@ -7,7 +7,7 @@ class Chat extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
 
-  import Status._
+  import it.unibo.Spawn._
 
   val centre = 189
   val targets = Vector(200,77)
