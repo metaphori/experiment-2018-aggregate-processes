@@ -7,7 +7,7 @@ class MultiGradient extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn with BlockT with BlockG with BlockC {
   override type MainResult = Any
 
-  import Status._
+  import it.unibo.Spawn._
 
   val (idSource1, idSource2) = (0, 378)
   val generators = Set(189,285,294,125,114)

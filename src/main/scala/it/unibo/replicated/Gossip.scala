@@ -45,7 +45,7 @@ class Gossip extends AggregateProgram
     }(value,p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
   }
 
-  import Status._
+  import it.unibo.Spawn._
 
   def replicated[T,R](proc: T => R)(argument: T, period: Double, numReplicates: Int) = {
     val lastPid = sharedTimerWithDecay[Double](period, dt(whenNan = 0)).toLong
@@ -94,27 +94,4 @@ class Gossip extends AggregateProgram
   def captureChange[T](x: T, initially: Boolean = true) = rep((Option.empty[T],false)) { case (value, _) =>
     (Some(x), value.map(_ != x).getOrElse(initially))
   }._2
-
-  override def sharedTimerWithDecay[T](period: T, dt: T)(implicit ev: Numeric[T]): T =
-    rep(ev.zero) { clock =>
-      val clockPerceived = foldhood(clock)(ev.max)(nbr(clock))
-      branch (ev.compare(clockPerceived, clock) <= 0) {
-        // I'm currently as fast as the fastest device in the neighborhood, so keep on counting time
-        ev.plus(clock, (branch(cyclicTimerWithDecay(period, dt)) { ev.one }  { ev.zero }))
-      } {
-        // Someone else's faster, take his time, and restart counting
-        clockPerceived
-      }
-    }
-
-  override def cyclicTimerWithDecay[T](length: T, decay: T)(implicit ev: Numeric[T]): Boolean = {
-    val x = rep(length){ left =>
-      branch (left == ev.zero) {
-        length
-      } {
-        T(length, decay)
-      }
-    }
-    env.put("x", x)
-  x == length}
 }
