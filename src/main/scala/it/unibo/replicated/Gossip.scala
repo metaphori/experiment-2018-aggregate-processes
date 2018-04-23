@@ -66,7 +66,7 @@ class Gossip extends AggregateProgram
     .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
 
   def maxVal = env.get[Double]("maxsense")
-  def senseValue = scala.util.Random.nextDouble()*maxVal
+  def senseValue = nextRandom*maxVal
   var sensedValue: Double = _
 
   override def main = {
