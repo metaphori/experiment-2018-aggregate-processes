@@ -1,5 +1,6 @@
 package it.unibo.alchemist.model.implementations.actions
 
+import it.unibo.alchemist.model.implementations.environments.OSMEnvironment
 import it.unibo.alchemist.model.implementations.movestrategies.speed.ConstantSpeed
 import it.unibo.alchemist.model.implementations.routes.PolygonalChain
 import it.unibo.alchemist.model.interfaces._
@@ -41,7 +42,8 @@ class RandomRoundTrip[T](environment: Environment[T], node: Node[T],
         currentTarget
       }
     },
-    new ConstantSpeed(reaction, speed)
+    new ConstantSpeed(reaction, speed),
+  true
   ) {
 
   def this(environment: Environment[T], node: Node[T], reaction: Reaction[T], rng: RandomGenerator,
@@ -51,13 +53,21 @@ class RandomRoundTrip[T](environment: Environment[T], node: Node[T],
     waypointCount: Int,
     speed: Double) = this(environment, node, reaction, rng, environment.makePosition(baseX, baseY), minX, minY, maxX, maxY, waypointCount, speed)
 
-  override def getDestination(source: Position, target: Position, maxWalk: Double): Position =
-    if (source.getDistanceTo(target) <= maxWalk) target
+  override def getDestination(source: Position, target: Position, maxWalk: Double): Position = {
+    val desiredDistance = source.getDistanceTo(target)
+    if (desiredDistance <= maxWalk) target
     else {
-      val vector = target - source
-      val angle = atan2(vector.getCoordinate(1), vector.getCoordinate(0))
-      environment.makePosition(maxWalk * cos(angle), maxWalk * sin(angle))
+      val ratio = maxWalk / desiredDistance
+      val vector = (target - source)
+      val res: Position = if (source.isInstanceOf[GeoPosition]) {
+        environment.makePosition(vector.getCoordinate(1) * ratio, vector.getCoordinate(0) * ratio)
+      } else {
+        environment.makePosition(vector.getCoordinate(0) * ratio, vector.getCoordinate(1) * ratio)
+      }
+      val actualdest = source + res
+      actualdest
     }
+  }
 
   override def cloneAction(node: Node[T], reaction: Reaction[T]): Action[T] =
     ???
