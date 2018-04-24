@@ -68,8 +68,8 @@ positions:
   
 displacements:
   - in:
-      type: Grid 
-      parameters: [0, 0, 20, 20, 1, 1, 0.8, 0.8]
+      type: Rectangle
+      parameters: [400, 0, 0, 20, 20]
     programs: 
       - *program
     contents: *contents

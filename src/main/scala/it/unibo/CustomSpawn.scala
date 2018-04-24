@@ -129,9 +129,16 @@ trait CustomSpawn extends Spawn {
     spreadKeys[Key,R](newProcesses){ key => env.put(SIM_METRIC_N_PROCS_RUN, env.get[Double](SIM_METRIC_N_PROCS_RUN) + 1); process(key)(args) }
 
   def spreadKeys[K,R](newKeys: Set[K])(mapKey: K => MapFilter[R]): Map[K,R] =
-    share(Map[K,R]()) { case (_, nbrKeys) =>
-      (includingSelf.unionHoodSet(nbrKeys().keySet) ++ newKeys).mapAndFilter[R]{ (key: K) =>
+    share(Map[K,R]()) { case (_, nbrMaps) =>
+      (includingSelf.unionHoodSet(nbrMaps().keySet) ++ newKeys).mapAndFilter[R]{ (key: K) =>
           simplyReturn(alignedExecution(mapKey)(key)).filteringExport.iff(_.filter).map(_.value)
+      }
+    }
+
+  def cuspawn[K, A, R](process: K => A => SpawnReturn[R], newKeys: Set[K], args: A): Map[K,R] =
+    share(Map[K,R]()) { case (_, nbrMaps) =>
+      (includingSelf.unionHoodSet(nbrMaps().keySet) ++ newKeys).mapAndFilter[R]{ (key: K) =>
+        simplyReturn(alignedExecution(process(_:K)(args))(key)).filteringExport.iff(_.filter).map(_.value)
       }
     }
 
