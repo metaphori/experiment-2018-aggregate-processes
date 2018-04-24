@@ -35,6 +35,10 @@ pools:
   - pool: &contents
     - molecule: commRadius
       concentration: *commRadius
+    - molecule: bandwidth_spawn
+      concentration: 0.0
+    - molecule: n_procs_run
+      concentration: 0.0
 
 positions:
   type: Continuous2DEuclidean
