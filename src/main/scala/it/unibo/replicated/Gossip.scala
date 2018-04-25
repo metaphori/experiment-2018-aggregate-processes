@@ -28,6 +28,12 @@ class Gossip extends AggregateProgram
     )
   }
 
+  implicit val bottomDouble = new Bounded[Double] {
+    def top: Double = Double.PositiveInfinity
+    def bottom: Double = Double.NegativeInfinity // THIS FIX
+    def compare(a: Double, b: Double): Int = (a-b).signum
+  }
+
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
     val leader = S(grain = Double.PositiveInfinity, metric = nbrRange)
     env.put("leader", leader)
