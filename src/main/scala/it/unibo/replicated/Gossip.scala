@@ -2,6 +2,7 @@ package it.unibo.replicated
 
 import java.util.Objects
 
+import it.unibo.alchemist.model.implementations.actions.FireOnVesuvius
 import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
 import it.unibo.alchemist.model.interfaces.{Molecule, Node}
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
@@ -28,7 +29,7 @@ class Gossip extends AggregateProgram
     Objects.requireNonNull(value)
     if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     rep(value)( max =>
-      maxHoodPlus(nbr(ev.max(max, value)))
+      ev.max(value, maxHoodPlus(nbr(ev.max(max, value))))
     )
   }
 
@@ -79,21 +80,30 @@ class Gossip extends AggregateProgram
   def senseValue = env.get[Number]("sensed").doubleValue
   var sensedValue: Double = _
 
+  def square[T](x: T)(implicit ev: Numeric[T]): T = ev.times(x, x)
+
   override def main = {
     sensedValue = senseValue
     if(senseValue < 0 || senseValue > 1 || senseValue.isNaN) throw new IllegalStateException()
-    val gnaive = gossipNaive(sensedValue)
-    val ggc = gossipGC(sensedValue)
-    val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
-    val gopt = gossipOracle()
-    env.put("gossip_naive_val", gnaive)
-    env.put("gossip_gc_val", ggc)
-    env.put("gossip_repl_val", grep)
-    env.put("gossip_opt_val", gopt)
-    env.put("gossip_naive_err", Math.pow(gopt-gnaive,2))
-    env.put("gossip_gc_err", Math.pow(gopt-ggc,2))
-    env.put("gossip_repl_err", Math.pow(gopt-grep,2))
-    grep
+    val naive = gossipNaive(sensedValue)
+    val scg = gossipGC(sensedValue)
+    val replicated = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
+    val oracle = gossipOracle()
+    import it.unibo.alchemist.model.interfaces.Time
+    val trueOracle = FireOnVesuvius.truth(sense[Time]("time").toDouble)
+    env.put("gossip_naive_val", naive)
+    env.put("gossip_replicated_val", replicated)
+    env.put("gossip_gc_val", scg)
+    env.put("gossip_opt_val", oracle)
+    env.put("gossip_true_val", trueOracle)
+    env.put("gossip_naive_err", Math.pow(oracle-naive,2))
+    env.put("gossip_replicated_err", Math.pow(oracle-replicated,2))
+    env.put("gossip_gc_err", Math.pow(oracle-scg,2))
+    env.put("gossip_naive_true_err", square(trueOracle-naive))
+    env.put("gossip_gc_true_err", square(trueOracle-scg))
+    env.put("gossip_replicated_true_err", square(trueOracle-replicated))
+    env.put("oracle_true_err", square(oracle-trueOracle))
+    replicated
   }
 
   /************ FUNCTIONS *************/
