@@ -24,7 +24,7 @@ class FireOnVesuvius(
 
   override def execute(): Unit = {
     val time = reaction.getTau.toDouble
-    node.setConcentration(sensor, sensorValues.keys
+    val localMax: Double = sensorValues.keys
       .map(node.getConcentration(_))
       .map(_.asInstanceOf[(Position, Some[(Double, Double, Double)])])
       .map(t => (t._1.getDistanceTo(environment.getPosition(node)), time match {
@@ -34,7 +34,8 @@ class FireOnVesuvius(
       }))
       .map { case (d, v) => v / ( 1 + Math.pow(d / 100, 2))}
       .max
-    )
+    require(!localMax.isNaN)
+    node.setConcentration(sensor, localMax)
   }
 
 

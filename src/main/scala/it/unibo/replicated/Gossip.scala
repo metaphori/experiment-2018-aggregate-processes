@@ -1,5 +1,7 @@
 package it.unibo.replicated
 
+import java.util.Objects
+
 import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
 import it.unibo.alchemist.model.interfaces.{Molecule, Node}
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
@@ -23,6 +25,8 @@ class Gossip extends AggregateProgram
   import Builtins.Bounded
 
   def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = {
+    Objects.requireNonNull(value)
+    if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     rep(value)( max =>
       maxHoodPlus(nbr(ev.max(max, value)))
     )
@@ -35,6 +39,8 @@ class Gossip extends AggregateProgram
   }
 
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
+    Objects.requireNonNull(value)
+    if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     val leader = S(grain = Double.PositiveInfinity, metric = nbrRange)
     env.put("leader", leader)
     broadcast(leader, C[Double,T](
@@ -75,7 +81,7 @@ class Gossip extends AggregateProgram
 
   override def main = {
     sensedValue = senseValue
-
+    if(senseValue < 0 || senseValue > 1 || senseValue.isNaN) throw new IllegalStateException()
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)
     val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
