@@ -17,7 +17,7 @@ variables:
   p: &p
     formula: 4 * $diameter * $frequency
   k: &k
-    formula: 3
+    formula: 2
 
 
 export:
