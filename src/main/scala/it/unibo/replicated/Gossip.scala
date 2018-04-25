@@ -72,12 +72,15 @@ class Gossip extends AggregateProgram
 
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)
-    val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = 3)
+    val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
     val gopt = gossipOracle()
-    env.put("gossip_naive", Math.pow(gopt-gnaive,2))
-    env.put("gossip_gc", Math.pow(gopt-ggc,2))
-    env.put("gossip_repl", Math.pow(gopt-grep,2))
-    env.put("gossip_opt", gopt)
+    env.put("gossip_naive_val", gnaive)
+    env.put("gossip_gc_val", ggc)
+    env.put("gossip_repl_val", grep)
+    env.put("gossip_opt_val", gopt)
+    env.put("gossip_naive_err", Math.pow(gopt-gnaive,2))
+    env.put("gossip_gc_err", Math.pow(gopt-ggc,2))
+    env.put("gossip_repl_err", Math.pow(gopt-grep,2))
     grep
   }
 

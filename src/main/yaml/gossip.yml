@@ -12,13 +12,25 @@ variables:
               
 export:
   - time
-  - molecule: gossip_naive
+  - molecule: gossip_naive_val
     aggregators: [mean]
     value-filter: ONLYFINITE
-  - molecule: gossip_gc
+  - molecule: gossip_repl_val
     aggregators: [mean]
     value-filter: ONLYFINITE
-  - molecule: gossip_repl
+  - molecule: gossip_gc_val
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_opt_val
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_naive_err
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_repl_err
+    aggregators: [mean]
+    value-filter: ONLYFINITE
+  - molecule: gossip_gc_err
     aggregators: [mean]
     value-filter: ONLYFINITE
 
