@@ -61,8 +61,7 @@ class Gossip extends AggregateProgram
     replicates
   }
 
-  val f: java.util.function.Function[_>:Node[Any],_<:Double] = _.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double]
-  def gossipOracle(): Double = environment.getNodes.stream().map[Double](f)
+  def gossipOracle(): Double = environment.getNodes.stream().map[Double](_.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double])
     .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
 
   def maxVal = env.get[Double]("maxsense")
