@@ -22,9 +22,9 @@ class Gossip extends AggregateProgram
 
   import Builtins.Bounded
 
-  def gossipNaive[T:Bounded](value: T) = {
+  def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = {
     rep(value)( max =>
-      maxHoodPlus(nbr(max))
+      maxHoodPlus(nbr(ev.max(max, value)))
     )
   }
 
