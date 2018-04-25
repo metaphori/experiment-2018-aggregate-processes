@@ -1,15 +1,23 @@
 variables:
   random: &random
     min: 0
-    max: 2
+    max: 100
     step: 1
     default: 0
   commRadius: &commRadius
-    min: 2.0
-    max: 10
-    step: 1
-    default: 1.5
-              
+    formula: 1000
+  speed: &speed
+    formula: $speedkmh / 3.6
+  speedkmh: &speedkmh
+    formula: 130
+  diameter: &diameter
+    formula: 13.20 * 1000 / $commRadius
+  frequency: &frequency
+    formula: 1
+  p: &p
+    formula: 4 * $diameter * $frequency
+
+
 export:
   - time
   - molecule: gossip_naive
@@ -34,13 +42,11 @@ incarnation: scafi
 
 pools:
   - pool: &program
-    - time-distribution:
-        type: ExponentialTime
-        parameters: [1, 0.5, 0.5]
+    - time-distribution: *frequency
       type: Event
       actions:
         - type: RunScafiProgram
-          parameters: [it.unibo.replicated.Gossip, 20]
+          parameters: [it.unibo.replicated.Gossip, 2]
   - pool: &move
     - time-distribution:
         type: ExponentialTime
@@ -48,15 +54,13 @@ pools:
       type: Event
       actions:
         - type: RandomRoundTrip
-          parameters: [40.774636, 14.485109, 40.776134, 14.398193, 40.869437, 14.475316, 10, 5]
-  - pool: &changeMaxValue
-    - time-distribution:
-        type: Trigger
-        parameters: [100]
+          parameters: [40.774636, 14.485109, 40.784553, 14.40, 40.856709, 14.46, 10, *speed]
+  - pool: &sense
+    - time-distribution: 2
       type: Event
       actions:
-        - type: SetLocalMoleculeConcentration
-          parameters: [maxsense, 100.0]
+        - type: FireOnVesuvius
+          parameters: [sensed]
 
 contents: &contents
   - molecule: commRadius
@@ -65,10 +69,10 @@ contents: &contents
     concentration: 0.0
   - molecule: bandwidth_spawn
     concentration: 0.0
-  - molecule: sensor
-    concentration: 77.7
-  - molecule: maxsense
-    concentration: 200.0
+  - molecule: p
+    concentration: *p
+  - molecule: sensed
+    concentration: Double.NaN
 
 environment:
   type: OSMEnvironment
@@ -77,9 +81,9 @@ environment:
 displacements:
   - in:
       type: Rectangle
-      parameters: [100, 40.774636, 14.485109, 0.001, 0.001]
+      parameters: [200, 40.774636, 14.485109, 0.001, 0.001]
     programs:
       - *program
-      - *changeMaxValue
       - *move
+      - *sense
     contents: *contents

@@ -1,9 +1,7 @@
 package it.unibo.replicated
 
-import java.util.Comparator
-
 import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
-import it.unibo.alchemist.model.interfaces.Node
+import it.unibo.alchemist.model.interfaces.{Molecule, Node}
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 import it.unibo.{CustomSpawn, ScafiAlchemistSupport}
 
@@ -16,16 +14,11 @@ class Gossip extends AggregateProgram
   override type MainResult = Any
 
   // FIX ISSUE IN SCAFI STDLIB
-  override def randomUid: (Double, ID) = rep((thisRoundRandom), mid()) { v => (v._1, mid()) }
-  def thisRoundRandom: Double = try {
-    env.get[Double]("thisRoundRandom")
-  } catch { case _ => env.put[Double]("thisRoundRandom",nextRandom); env.get[Double]("thisRoundRandom") }
-
   import Builtins.Bounded
 
   def gossipNaive[T:Bounded](value: T) = {
     rep(value)( max =>
-      maxHood(nbr(max))
+      maxHoodPlus(nbr(max))
     )
   }
 
@@ -41,7 +34,7 @@ class Gossip extends AggregateProgram
 
   def gossipReplicated[T](value: T, p: Double, k: Int)(implicit ev: Bounded[T]) = {
     (replicated{
-      gossipGC[T]
+      gossipNaive[T]
     }(value,p,k) ++ Map[Long,T](Long.MaxValue -> value)).minBy[Long](_._1)._2
   }
 
@@ -61,20 +54,19 @@ class Gossip extends AggregateProgram
     replicates
   }
 
-  def gossipOracle(): Double = environment.getNodes.stream().map[Double](_.getConcentration(new SimpleMolecule("sensor")).asInstanceOf[Double])
-    .max((o1: Double, o2: Double) => o1.compareTo(o2)).get()
+  import scala.collection.JavaConverters._
+  implicit def strToMol(s: String): Molecule = new SimpleMolecule(s)
+  def gossipOracle(): Double = environment.asScala.map (_.getConcentration("sensed").asInstanceOf[Double]).max
 
-  def maxVal = env.get[Double]("maxsense")
-  def senseValue = nextRandom*maxVal
+  def senseValue = env.get[Number]("sensed").doubleValue
   var sensedValue: Double = _
 
   override def main = {
     sensedValue = senseValue
-    env.put[Double]("sensor", sensedValue)
 
     val gnaive = gossipNaive(sensedValue)
     val ggc = gossipGC(sensedValue)
-    val grep = gossipReplicated(sensedValue, p = 30, k = 5)
+    val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = 3)
     val gopt = gossipOracle()
     env.put("gossip_naive", Math.pow(gopt-gnaive,2))
     env.put("gossip_gc", Math.pow(gopt-ggc,2))
