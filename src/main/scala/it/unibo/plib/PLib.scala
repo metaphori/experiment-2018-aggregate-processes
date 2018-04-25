@@ -24,41 +24,62 @@ class PLib extends AggregateProgram
     }, newProcs, argument)
   }
 
-  class PGenContinuation[A,R](proc: A => R){
-    def on(pred: => Boolean) = spawn[Long,A,R](_ => args => (proc(args), true),
-      if(pred) Set(timestamp()) else Set(), ???)
-    def every(period: Long) = on(timestamp() % period == 0)
-  }
-  def generate[A,R](proc: A => R) = new PGenContinuation(proc)
-
-  implicit class ProcGenerator[K](gen: => List[K]) {
-    def generate[A,R](proc: A => R) = new ProcContinuation(() => gen, proc)
-  }
-  class ProcContinuation[K,A,R](gen: () => List[K], proc: A => R) {
-    def withArgs(args: A) = spawn[K,A,R](k => a => (proc(a),true), gen().toSet, args)
-  }
-
-  object generate {
-    def when(pred: Boolean) = new ProcGenerator[Long](
-      if(pred) List(timestamp()) else List()
-    )
-    def once = new ProcGenerator[Long](
-      if(rep(0L)(_+1)==1) List(timestamp()) else List()
-    )
-    def every(period: Double, dt: Double) = new ProcGenerator[Long]({
-      val clock = clockWithDecay[Double](period, dt).toLong
-      if(captureChange(clock)) List(clock) else List[Long]()
-    })
-  }
-
   trait GenerationInSpace {
-    def inNode(id: ID)
-    def inNodes(ids: ID*)
+    def where(pred: Boolean): GenerationInSpaceContinuation
+
+    def inNode(id: ID): GenerationInSpaceContinuation = where(mid==id)
+    def inNodes(ids: ID*): GenerationInSpaceContinuation = where(ids.contains(mid))
+  }
+
+  trait GenerationInTime {
+    def when(pred: Boolean): GenerationInTimeContinuation
+
+    def after(delay: Double, dt: Double): GenerationInTimeContinuation = when(T(delay, dt)==0)
+    def every(period: Double, dt: Double): GenerationInTimeContinuation = when(cyclicTimerWithDecay(period, dt))
+
+    def once: GenerationInTimeContinuation = after(0, 0)
+  }
+
+  trait KeyGenerator {
+    def generateKeys[K](k: Long => List[K]): KeyGeneratorContinuation[K]
+  }
+
+  class GenerationInSpaceContinuation(val inSpace: Boolean) extends GenerationInTime {
+    override def when(pred: Boolean) = new GenerationInTimeContinuation(inSpace & pred)
+  }
+
+  class GenerationInTimeContinuation(val inSpaceTime: Boolean) extends KeyGenerator {
+    override def generateKeys[K](kgen: Long => List[K]): KeyGeneratorContinuation[K] =
+      new KeyGeneratorContinuation[K](inSpaceTime, kgen(rep(0L){ k => if(inSpaceTime) k+1 else k }))
+  }
+
+  trait ProcGenerator[K] {
+    def run[A,R](proc: A => R): ProcContinuation[K,A,R]
+  }
+
+  class KeyGeneratorContinuation[K](inSpaceTime: Boolean, keys: List[K]) extends ProcGenerator[K] {
+    override def run[A, R](proc: (A) => R): ProcContinuation[K, A, R] =
+      new ProcContinuation[K,A,R](keys.toSet, proc)
+  }
+
+  object spawn extends GenerationInSpace {
+    override def where(pred: Boolean) = new GenerationInSpaceContinuation(pred)
+  }
+
+  class ProcContinuation[K,A,R](keys: Set[K], proc: A => R) {
+    def withArgs(args: A) = spawn[K,A,R](k => a => (proc(a),true), keys, args)
   }
 
   override def main = {
-    val a = generate.when(mid == 10 & rep(0)(_+1)==20).generate[Unit,Long](_ => rep(0L)(_+1) ).withArgs(_)
-    env.put("a", a)
+    //val a = generate.when(mid == 10 & rep(0)(_+1)==20).generate[Unit,Long](_ => rep(0L)(_+1) ).withArgs(_)
+    //env.put("a", a)
+    spawn
+      .where(mid == 2)
+      .every(30, dt())
+      .generateKeys[Long](k => List(k))
+      .run[Int,Int]{
+        rep(_)(_+1)
+      }.withArgs(1000)
   }
 
   /************ FUNCTIONS *************/

@@ -52,6 +52,7 @@ class Chat extends AggregateProgram
     val inRegion = inPathFromSrcToCentre || inPathFromTargetToCentre
 
     (msg, multiBranch[Status]
+      //.when(T(200,dt(whenNan=0)) <= 0){ External } // Timeout
       .when(mid == msg.to){ justOnce({
         if(!receivedMsgs.contains(msg)) {
           receivedMsgs += msg

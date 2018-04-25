@@ -1,0 +1,4 @@
+Chat experiment
+- Issues with process shutdown
+- Beware of network partitions in simulations
+- Beware of nodes positioned at the exact same location: they break the chat algorithm!

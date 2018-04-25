@@ -62,6 +62,8 @@ seeds:
 network-model:
   type: EuclideanDistance
   parameters: [*commRadius]
+#  type: ClosestN
+#  parameters: [5,*ndevices]
   
 incarnation: scafi
 
