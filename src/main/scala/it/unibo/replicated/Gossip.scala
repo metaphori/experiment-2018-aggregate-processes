@@ -14,6 +14,12 @@ class Gossip extends AggregateProgram
   override type MainResult = Any
 
   // FIX ISSUE IN SCAFI STDLIB
+  override def randomUid: (Double, ID) = rep((nodeRandom), mid()) { v => (v._1, mid()) }
+  def nodeRandom: Double = try {
+    env.get[Double]("nodeRandom")
+  } catch { case _ => env.put[Double]("nodeRandom",nextRandom); env.get[Double]("nodeRandom") }
+
+
   import Builtins.Bounded
 
   def gossipNaive[T:Bounded](value: T) = {
