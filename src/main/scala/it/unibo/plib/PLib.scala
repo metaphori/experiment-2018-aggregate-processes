@@ -17,7 +17,7 @@ class PLib extends AggregateProgram
   override type MainResult = Any
 
   def replicated[T,R](proc: T => R)(argument: T, period: Double, numReplicates: Int) = {
-    val lastPid = sharedTimerWithDecay[Double](period, dt(whenNan = 0)).toLong
+    val lastPid = sharedTimerWithDecay(period, dt(whenNan = 0)).toLong
     val newProcs = if(captureChange(lastPid)) Set(lastPid) else Set[Long]()
     sspawn[Long,T,R]((pid: Long) => (arg) => {
       (proc(arg), if(lastPid - pid < numReplicates){ Output } else { External })
