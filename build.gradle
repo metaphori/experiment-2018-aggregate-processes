@@ -64,7 +64,7 @@ void makeTest(file, sampling, time, vars) {
     runTests.dependsOn("run$file")
 }
 
-makeTest("chat_map", 1, 1000, ["random"])
+makeTest("chat_map", 1, 400, ["random"])
 makeTest("gossip_map", 5, 1200 * 4, ["random"])
 
 defaultTasks('runTests')
