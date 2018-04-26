@@ -14,16 +14,14 @@ object Metrics {
 class Gossip extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn
   with BlockT with BlockG with BlockC with BlockS {
+  import Builtins._
   override type MainResult = Any
 
   // FIX ISSUE IN SCAFI STDLIB
-  override def randomUid: (Double, ID) = rep((nodeRandom), mid()) { v => (v._1, mid()) }
+  override def randomUid: (Double, ID) = rep[(Double, ID)]((nodeRandom, mid())) { v => (v._1, mid()) }
   def nodeRandom: Double = try {
     env.get[Double]("nodeRandom")
   } catch { case _ => env.put[Double]("nodeRandom",nextRandom); env.get[Double]("nodeRandom") }
-
-
-  import Builtins.Bounded
 
   def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = {
     Objects.requireNonNull(value)
@@ -39,12 +37,26 @@ class Gossip extends AggregateProgram
     def compare(a: Double, b: Double): Int = (a-b).signum
   }
 
+  def valueBroadcast[V: Bounded](source: Boolean, field: V): V =
+    Gdef[V](source, field, v => v, nbrRange)
+
+  def Gdef[V: Bounded](source: Boolean, field: V, acc: V => V, metric: => Double): V =
+    rep((Double.PositiveInfinity, field)) { case (dist, value) =>
+      mux(source) {
+        (0.0, field)
+      } {
+        excludingSelf.minHoodLoc((Double.PositiveInfinity,field)) {
+          (nbr { dist } + metric, acc(nbr { value }))
+        }
+      }
+    }._2
+
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
     Objects.requireNonNull(value)
     if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     val leader = S(grain = Double.PositiveInfinity, metric = nbrRange)
     env.put("leader", leader)
-    broadcast(leader, C[Double,T](
+    valueBroadcast(leader, C[Double,T](
       potential = distanceTo(leader),
       acc = ev.max(_,_),
       local = value,

@@ -204,9 +204,12 @@ trait CustomSpawn extends Spawn {
     *********************************************/
 
   implicit class RichFieldOps(fo: FieldOps) {
-    def everyHood(p: => Boolean): Boolean = {
+    def everyHood(p: => Boolean): Boolean =
       fo.foldhoodTemplate(true)(_&&_)(nbr{p})
-    }
+
+    import Builtins.Bounded
+    def minHoodLoc[T: Bounded](default: T)(expr: => T): T =
+      fo.foldhoodTemplate[T](default)(implicitly[Bounded[T]].min)(expr)
   }
 
   implicit class RichMap[K,V](val m: Map[K,V]){
