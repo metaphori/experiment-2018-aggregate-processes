@@ -1,5 +1,8 @@
 package it.unibo.replicated
 
+import java.util.Objects
+
+import it.unibo.alchemist.model.implementations.actions.FireOnVesuvius
 import it.unibo.alchemist.model.implementations.molecules.SimpleMolecule
 import it.unibo.alchemist.model.interfaces.{Molecule, Node}
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
@@ -11,20 +14,20 @@ object Metrics {
 class Gossip extends AggregateProgram
   with StandardSensors with ScafiAlchemistSupport with FieldUtils with CustomSpawn
   with BlockT with BlockG with BlockC with BlockS {
+  import Builtins._
   override type MainResult = Any
 
   // FIX ISSUE IN SCAFI STDLIB
-  override def randomUid: (Double, ID) = rep((nodeRandom), mid()) { v => (v._1, mid()) }
+  override def randomUid: (Double, ID) = rep[(Double, ID)]((nodeRandom, mid())) { v => (v._1, mid()) }
   def nodeRandom: Double = try {
     env.get[Double]("nodeRandom")
   } catch { case _ => env.put[Double]("nodeRandom",nextRandom); env.get[Double]("nodeRandom") }
 
-
-  import Builtins.Bounded
-
-  def gossipNaive[T:Bounded](value: T) = {
+  def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = {
+    Objects.requireNonNull(value)
+    if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     rep(value)( max =>
-      maxHoodPlus(nbr(max))
+      ev.max(value, maxHoodPlus(nbr(ev.max(max, value))))
     )
   }
 
@@ -34,10 +37,26 @@ class Gossip extends AggregateProgram
     def compare(a: Double, b: Double): Int = (a-b).signum
   }
 
+  def valueBroadcast[V: Bounded](source: Boolean, field: V): V =
+    Gdef[V](source, field, v => v, nbrRange)
+
+  def Gdef[V: Bounded](source: Boolean, field: V, acc: V => V, metric: => Double): V =
+    rep((Double.PositiveInfinity, field)) { case (dist, value) =>
+      mux(source) {
+        (0.0, field)
+      } {
+        excludingSelf.minHoodLoc((Double.PositiveInfinity,field)) {
+          (nbr { dist } + metric, acc(nbr { value }))
+        }
+      }
+    }._2
+
   def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
+    Objects.requireNonNull(value)
+    if (value.isInstanceOf[Double] && value.asInstanceOf[Double].isNaN) throw new IllegalStateException()
     val leader = S(grain = Double.PositiveInfinity, metric = nbrRange)
     env.put("leader", leader)
-    broadcast(leader, C[Double,T](
+    valueBroadcast(leader, C[Double,T](
       potential = distanceTo(leader),
       acc = ev.max(_,_),
       local = value,
@@ -73,21 +92,30 @@ class Gossip extends AggregateProgram
   def senseValue = env.get[Number]("sensed").doubleValue
   var sensedValue: Double = _
 
+  def square[T](x: T)(implicit ev: Numeric[T]): T = ev.times(x, x)
+
   override def main = {
     sensedValue = senseValue
-
-    val gnaive = gossipNaive(sensedValue)
-    val ggc = gossipGC(sensedValue)
-    val grep = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
-    val gopt = gossipOracle()
-    env.put("gossip_naive_val", gnaive)
-    env.put("gossip_gc_val", ggc)
-    env.put("gossip_repl_val", grep)
-    env.put("gossip_opt_val", gopt)
-    env.put("gossip_naive_err", Math.pow(gopt-gnaive,2))
-    env.put("gossip_gc_err", Math.pow(gopt-ggc,2))
-    env.put("gossip_repl_err", Math.pow(gopt-grep,2))
-    grep
+    if(senseValue < 0 || senseValue > 1 || senseValue.isNaN) throw new IllegalStateException()
+    val naive = gossipNaive(sensedValue)
+    val scg = gossipGC(sensedValue)
+    val replicated = gossipReplicated(sensedValue, p = env.get[Double]("p"), k = env.get[Int]("k"))
+    val oracle = gossipOracle()
+    import it.unibo.alchemist.model.interfaces.Time
+    val trueOracle = FireOnVesuvius.truth(sense[Time]("time").toDouble)
+    env.put("gossip_naive_val", naive)
+    env.put("gossip_replicated_val", replicated)
+    env.put("gossip_gc_val", scg)
+    env.put("gossip_opt_val", oracle)
+    env.put("gossip_true_val", trueOracle)
+    env.put("gossip_naive_err", Math.pow(oracle-naive,2))
+    env.put("gossip_replicated_err", Math.pow(oracle-replicated,2))
+    env.put("gossip_gc_err", Math.pow(oracle-scg,2))
+    env.put("gossip_naive_true_err", square(trueOracle-naive))
+    env.put("gossip_gc_true_err", square(trueOracle-scg))
+    env.put("gossip_replicated_true_err", square(trueOracle-replicated))
+    env.put("oracle_true_err", square(oracle-trueOracle))
+    replicated
   }
 
   /************ FUNCTIONS *************/

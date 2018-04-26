@@ -24,25 +24,40 @@ export:
   - time
   - molecule: gossip_naive_val
     aggregators: [mean]
-    value-filter: ONLYFINITE
-  - molecule: gossip_repl_val
+    value-filter: FilterNaN
+  - molecule: gossip_replicated_val
     aggregators: [mean]
-    value-filter: ONLYFINITE
+    value-filter: FilterNaN
   - molecule: gossip_gc_val
     aggregators: [mean]
-    value-filter: ONLYFINITE
+    value-filter: FilterNaN
   - molecule: gossip_opt_val
     aggregators: [mean]
-    value-filter: ONLYFINITE
+    value-filter: FilterNaN
+  - molecule: gossip_true_val
+    aggregators: [mean]
+    value-filter: FilterNaN
   - molecule: gossip_naive_err
     aggregators: [mean]
-    value-filter: ONLYFINITE
-  - molecule: gossip_repl_err
+    value-filter: FilterNaN
+  - molecule: gossip_replicated_err
     aggregators: [mean]
-    value-filter: ONLYFINITE
+    value-filter: FilterNaN
   - molecule: gossip_gc_err
     aggregators: [mean]
-    value-filter: ONLYFINITE
+    value-filter: FilterNaN
+  - molecule: gossip_naive_true_err
+    aggregators: [mean]
+    value-filter: FilterNaN
+  - molecule: gossip_gc_true_err
+    aggregators: [mean]
+    value-filter: FilterNaN
+  - molecule: gossip_replicated_true_err
+    aggregators: [mean]
+    value-filter: FilterNaN
+  - molecule: oracle_true_err
+    aggregators: [mean]
+    value-filter: FilterNaN
 
 seeds:
   scenario: *random
@@ -88,7 +103,7 @@ contents: &contents
   - molecule: k
     concentration: *k
   - molecule: sensed
-    concentration: Double.NaN
+    concentration: 0.0
 
 environment:
   type: OSMEnvironment
