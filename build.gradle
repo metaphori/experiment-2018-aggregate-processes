@@ -65,19 +65,6 @@ void makeTest(file, sampling, time, vars) {
 }
 
 makeTest("chat_map", 1, 1000, ["random"])
-
-task myRun(type: JavaExec){
-    classpath 'src/main/java'
-    classpath 'src/main/yaml'
-    classpath 'src/main/scala'
-    classpath sourceSets.main.runtimeClasspath
-    main = 'it.unibo.alchemist.Alchemist'
-    args(
-        "-y", "src/main/yaml/xxx.yml",
-        "-g", "src/main/resources/effectsxxx.aes"
-    )
-    dependsOn(compileScala)
-    dependsOn(processResources)
-}
+makeTest("gossip_map", 5, 1200 * 4, ["random"])
 
 defaultTasks('runTests')
