@@ -111,7 +111,7 @@ class Chat extends AggregateProgram
       val newRemovedMsgs = allRemovedMsgs ++ toRemove
 
       env.put(Metrics.BANDWIDTH_NOSPAWN, env.get[Double](Metrics.BANDWIDTH_NOSPAWN)
-        + excludingSelf.sumHood(1) * (activeMsgs.size + newRemovedMsgs.size))
+        + excludingSelf.sumHood(1) * activeMsgs.size)
 
       (activeMsgs, newRemovedMsgs)
     }
