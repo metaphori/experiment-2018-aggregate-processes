@@ -3,7 +3,7 @@
   <component name="ScalaCompilerConfiguration">
     <option name="deprecationWarnings" value="true" />
     <option name="featureWarnings" value="true" />
-    <profile name="Gradle 1" modules="experiment-spawn">
+    <profile name="Gradle 1" modules="experiment-spawn,2018-SASO-Spawn_main,2018-SASO-Spawn_test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <parameters>
