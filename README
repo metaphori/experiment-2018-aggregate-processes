@@ -1,13 +1,72 @@
-### Running stuff
+# Dynamic Collective Computations through Aggregate Processes
 
-By command-line:
+This is the repository for the paper "Dynamic Collective Computations through Aggregate Processes",
+where we include all the code of the simulation experiments
+as well as additional information.
 
+## Case studies
+
+### 1. Opportunistic instant messaging
+
+Goal: showing how aggregate processes can adapt their boundaries to involve only the devices that are interested in the collective computation they sustain.
+
+```scala
+/* Message with source 'src', recipient 'dest', and content 'str' */
+case class Msg(src: ID, dest: ID, str: String)
+
+/* This structure represents the runtime arguments of a chat process instance */
+case class ChatArgs(parentToCentre: ID, dependentNodes: Set[ID])
+
+/* The field computation that each chat process instance carries out.
+  @param msg: the message to be sent
+  @param args: the runtime arguments of a chat process instance
+               (passed by the caller of the process)
+*/
+def chatProcessLogic(msg: Msg)(args: ChatArgs): (Msg,Status) = {
+  // Boolean field expressing a path from the source of a message
+  // to a centre node
+  val srcToCentrePath = msg.src==mid | includingSelf.anyHood {
+    nbr(args.parentToCentre) == mid
+  }
+  val destToCentrePath = args.dependentNodes.has(msg.target)
+  val inRegion = srcToCentrePath || destToCentrePath
+  (msg, branch(mid == msg.target){
+    justOnce(Output, thereafter=Terminated)
+  }{ mux(inRegion){ Bubble}{ External } })
+}
+
+def chat(centre: ID, source: ID, newTargets: Set[ID]) = {
+  val (_, parentToCentre) = gradientWithParent(centre == mid)
+  val dependentNodes = rep(Set.empty[ID]){ case (s: Set[ID]) =>
+    excludingSelf.unionHoodSet[ID](
+      mux( nbr{parentToCentre}==mid ){ nbr(s) }{ Set.empty[ID] }
+    ) + mid } // nodes whose path towards gen passes through me
+  richSpawn(
+    process = chatProcessLogic(_),
+    params  = newTargets.map(to => Msg(source, to, s"Msg")),
+    args    = ChatArgs(parentToCentre, dependentNodes)).values
+}
+```
+
+### 2. Reconnaissance with a drone swarm
+
+Goal: showing how aggregate processes support aggregate meta-algorithms such as "time replication",
+ very useful in practice to support fast adaptivity e.g. of gossip algorithms.
+
+## Instructions
+
+### Running the experiments
+
+Run the experiments by command-line:
+
+```
+$ gradle build
 $ java -Xmx5024m
   -cp "build/classes/main:build/resources/main:libs/scafi-lib-assembly-0.3.0.jar:libs/alchemist-redist-7.0.2-beta.jar" \
   it.unibo.alchemist.Alchemist   \
   -b -var random \
   -y src/main/yaml/it.unibo.chat.yml -e data/20180409_chat -t 1000 -p 3 -v &> exec.txt &
+```
 
 where build/ is where Gradle puts compiled code;
 otherwise, you might provide as well "build/libs/experiment-spawn.jar".
-
