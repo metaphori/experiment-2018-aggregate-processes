@@ -60,19 +60,31 @@ Goal: showing how aggregate processes support aggregate meta-algorithms such as 
  very useful in practice to support fast adaptivity e.g. of gossip algorithms.
 
 ```scala
+/**
+  `rep`is used to keep track of the previous max in the local node.
+  `maxHoodPlus` takes the maximum value of its argument expression among those shared by neighbours.
+*/
 def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = rep(value)(max =>
     ev.max(value, maxHoodPlus(nbr(ev.max(max, value)))))
 
 def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
+  // Performs leader election, producing a field which is true in correspondence of leaders
   val leader = S(grain = Double.PositiveInfinity, nbrRange)
+  // Performs a broadcast, from leaders, of the maximum value collected using `C`
   valueBroadcast(leader, C[Double,T](
   potential = gradient(leader),
   acc = ev.max(_,_), local = value, Null = ev.bottom))
 }
 
+/**
+  @param value: the value to gossip
+  @param p: the period between two gossip process instances
+  @param k: the number of concurrently running replicas
+*/
 def gossipReplicated[T:Bounded](value: T, p: Double, k: Int) =
-  (replicated{ gossipNaive[T] }(value,p,k) + (Long.MaxValue -> value))
-  .minBy[Long](_._1)._2
+  (replicated{ gossipNaive[T] }(value,p,k) // this yields a map from process ids to gradient values
+   + (Long.MaxValue -> value)) // we add a default value with less priority
+  .minBy[Long](_._1)._2  // we select the entry by minimizing by key or process id and project the value (`._2`)
 ```
 
 #### Fig. 4
