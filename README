@@ -59,6 +59,22 @@ def chat(centre: ID, source: ID, newTargets: Set[ID]) = {
 Goal: showing how aggregate processes support aggregate meta-algorithms such as "time replication",
  very useful in practice to support fast adaptivity e.g. of gossip algorithms.
 
+```scala
+def gossipNaive[T](value: T)(implicit ev: Bounded[T]) = rep(value)(max =>
+    ev.max(value, maxHoodPlus(nbr(ev.max(max, value)))))
+
+def gossipGC[T](value: T)(implicit ev: Bounded[T]) = {
+  val leader = S(grain = Double.PositiveInfinity, nbrRange)
+  valueBroadcast(leader, C[Double,T](
+  potential = gradient(leader),
+  acc = ev.max(_,_), local = value, Null = ev.bottom))
+}
+
+def gossipReplicated[T:Bounded](value: T, p: Double, k: Int) =
+  (replicated{ gossipNaive[T] }(value,p,k) + (Long.MaxValue -> value))
+  .minBy[Long](_._1)._2
+```
+
 #### Fig. 4
 
 ![Figure 4a](fig/Dronesurvey_meanmeasuredvalues.png "Fig. 4a")
