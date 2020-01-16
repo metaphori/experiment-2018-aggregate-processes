@@ -1,10 +1,48 @@
 # Dynamic Collective Computations through Aggregate Processes
 
-This is the repository for the paper "Dynamic Collective Computations through Aggregate Processes",
-where we include all the code of the simulation experiments
-as well as additional information.
+This is the repository for the paper "Dynamic Collective Computations through Aggregate Processes"
+and its extension "Engineering Collective Intelligence at the Edge with Aggregate Processes" submitted to Elsevier EAAI.
+The additional case study on self-discovery of services at the edge can be found
+at the following repository: [Experiment-2019-EAAI-Processes](https://github.com/DanySK/Experiment-2019-EAAI-Processes)
 
-## Case studies
+## Instructions
+
+### Running the experiments
+
+We have defined some gradle tasks to automate the execution of the experiments.
+**NOTE: use Java 1.8** to run Gradle.
+
+#### Opportunistic instant messaging
+
+To run the simulations for the first case study (opportunistic chat), run (from the repository root directory):
+
+```
+$ ./gradlew runchat_map
+```
+
+#### Reconnaissance with a drone swarm
+
+To run the simulations for the second case study (fire risk estimation through a mobile swarm of drones), run:
+
+```
+$ ./gradlew rungossip_map
+```
+
+### Plotting
+
+Plotting can be performed by running `process.py`:
+
+```
+$ python process.py
+```
+
+You may need to install some Python packages:
+
+```
+$ pip install xarray
+```
+
+## Source code and Figures
 
 ### 1. Opportunistic instant messaging
 
@@ -91,21 +129,3 @@ def gossipReplicated[T:Bounded](value: T, p: Double, k: Int) =
 
 ![Figure 4a](fig/Dronesurvey_meanmeasuredvalues.png "Fig. 4a")
 ![Figure 4b](fig/Dronesurvey_measureerror.png "Fig. 4b")
-
-## Instructions
-
-### Running the experiments
-
-Run the experiments by command-line:
-
-```
-$ gradle build
-$ java -Xmx5024m
-  -cp "build/classes/main:build/resources/main:libs/scafi-lib-assembly-0.3.0.jar:libs/alchemist-redist-7.0.2-beta.jar" \
-  it.unibo.alchemist.Alchemist   \
-  -b -var random \
-  -y src/main/yaml/it.unibo.chat.yml -e data/20180409_chat -t 1000 -p 3 -v &> exec.txt &
-```
-
-where build/ is where Gradle puts compiled code;
-otherwise, you might provide as well "build/libs/experiment-spawn.jar".
