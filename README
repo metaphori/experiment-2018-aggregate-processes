@@ -1,6 +1,8 @@
-# Dynamic Collective Computations through Aggregate Processes
+# _Engineering Collective Intelligence at the Edge with Aggregate Processes_
+(formerly _Dynamic Collective Computations through Aggregate Processes_)
 
 This is the repository for the paper "Dynamic Collective Computations through Aggregate Processes"
+(presented at [COORDINATION'2019](https://www.discotec.org/2019/programme))
 and its extension "Engineering Collective Intelligence at the Edge with Aggregate Processes" submitted to Elsevier EAAI.
 The additional case study on self-discovery of services at the edge can be found
 at the following repository: [Experiment-2019-EAAI-Processes](https://github.com/DanySK/Experiment-2019-EAAI-Processes)
@@ -41,6 +43,13 @@ You may need to install some Python packages:
 ```
 $ pip install xarray
 ```
+
+## Tools
+
+The simulation framework leverages the following tools:
+
+- [ScaFi Aggregate Programming Toolkit](https://scafi.github.io/)
+- [Alchemist Simulator](http://alchemistsimulator.github.io/): a rich, flexible simulation framework that supports ScaFi
 
 ## Source code and Figures
 
