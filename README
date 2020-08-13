@@ -138,3 +138,22 @@ def gossipReplicated[T:Bounded](value: T, p: Double, k: Int) =
 
 ![Figure 4a](fig/Dronesurvey_meanmeasuredvalues.png "Fig. 4a")
 ![Figure 4b](fig/Dronesurvey_measureerror.png "Fig. 4b")
+
+## Implementation details
+
+The simulation project is organised as follows:
+
+- `src/main/yaml/` contains  `*.yaml` **simulation descriptors**, specifying simulation variables, molecules to be exported, the network model and structure, and the programs to be executed
+    - Please take a look at the [Alchemist Usage Guide](https://alchemistsimulator.github.io/wiki/usage/yaml/) for a reference of the YAML syntax and meaning.
+- `src/main/resources/`: contains `*.aes* files for **effects** for the graphical simulations as well as `*.pbf` maps data
+- `src/main/scala/it/unibo/`: contains both **Scala/ScaFi source code** (as explained in the following subsections) as well as **simulation code** (mainly under package `it.unibo.alchemist`)
+
+### 1. Opportunistic instant messaging
+
+- The descriptor for the chat case study is **`chat_map.yml`**
+- The aggregate program is **`it.unibo.chat.exp.Chat`**
+
+### 2. Reconnaissance with a drone swarm
+
+- The descriptor for the gossip/drone case study is **`gossip_map.yml`**
+- The aggregate program is **`it.unibo.replicated.Gossip`**
